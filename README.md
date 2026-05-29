@@ -19,12 +19,24 @@ Importa automaticamente le riunioni da Gmail, le organizza in una knowledge base
 # 1. Setup iniziale (eseguire una sola volta)
 scripts\setup.bat
 
-# 2. Scarica le note da Gmail
+# 2. Configura il file .env (copia da .env.example)
+cp .env.example .env
+# Modifica .env con i tuoi valori:
+#   OUTPUT_DIR       → percorso cartella note_riunioni
+#   MEETWIKI_OWNER   → il tuo nome (per la board Kanban personale)
+
+# 3. Scarica le note da Gmail
 run.bat
 
-# 3. Aggiorna la wiki
+# 4. Aggiorna la wiki
 .venv\Scripts\python.exe scripts\meetwiki_update.py
 ```
+
+| Variabile | Descrizione | Obbligatoria |
+|-----------|-------------|:------------:|
+| `OUTPUT_DIR` | Percorso dove salvare le note scaricate | ✅ |
+| `MEETWIKI_OWNER` | Nome owner per la board Kanban personale | No |
+| `GITHUB_MODELS_TOKEN` | Token GitHub per Obsidian Copilot | No |
 
 ---
 
