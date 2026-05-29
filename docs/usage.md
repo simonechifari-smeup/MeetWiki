@@ -3,8 +3,8 @@
 ## Workflow quotidiano
 
 ```powershell
-# Scarica nuove note da Gmail
-run.bat
+# Scarica nuove note da Gmail (menu interattivo)
+menu.cmd
 
 # Aggiorna la wiki (pipeline completa)
 .venv\Scripts\python.exe scripts\meetwiki_update.py

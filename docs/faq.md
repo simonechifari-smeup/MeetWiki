@@ -64,7 +64,7 @@ Usa `meetwiki_actions.py --list` per vedere gli hash.
 
 ---
 
-### `run.bat` non trova Chrome
+### Il downloader non trova Chrome
 
 Verifica il percorso in `.env`:
 

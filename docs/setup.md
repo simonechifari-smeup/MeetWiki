@@ -90,7 +90,7 @@ Per scaricare le note in automatico ogni giorno:
 scripts\schedule_task.bat
 ```
 
-Crea un task di Windows Task Scheduler che esegue `run.bat` all'orario configurato.
+Crea un task di Windows Task Scheduler che esegue il downloader (`scripts\gemini_notes_downloader.py`) all'orario configurato.
 
 ---
 
@@ -101,4 +101,4 @@ Crea un task di Windows Task Scheduler che esegue `run.bat` all'orario configura
 | `scripts\setup.bat` | Setup completo: venv + dipendenze + Playwright + .env + cartelle |
 | `scripts\setup_obsidian.bat` | Setup vault Obsidian: struttura + download plugin da GitHub |
 | `scripts\schedule_task.bat` | Crea task schedulato per download automatico |
-| `run.bat` | Esegue il download delle note da Gmail |
+| `menu.cmd` / `menu.py` | Menu interattivo per download note e pipeline wiki |

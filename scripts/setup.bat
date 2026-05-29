@@ -103,7 +103,7 @@ echo.
 echo PROSSIMI PASSI:
 echo   1. Modifica .env con i tuoi valori (OUTPUT_DIR, MEETWIKI_OWNER)
 echo   2. Chiudi Google Chrome completamente
-echo   3. Esegui run.bat per scaricare le note da Gmail
+echo   3. Esegui menu.cmd per scaricare le note da Gmail
 echo   4. Esegui: .venv\Scripts\python.exe scripts\meetwiki_update.py
 echo.
 echo OPZIONALE:

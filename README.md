@@ -26,8 +26,8 @@ cp .env.example .env
 #   OUTPUT_DIR       → percorso cartella note_riunioni
 #   MEETWIKI_OWNER   → il tuo nome (per la board Kanban personale)
 
-# 3. Scarica le note da Gmail
-run.bat
+# 3. Scarica le note da Gmail (apre menu interattivo)
+menu.cmd
 
 # 4. Aggiorna la wiki
 .venv\Scripts\python.exe scripts\meetwiki_update.py
@@ -77,6 +77,13 @@ Lancia `menu.cmd` dalla root per accedere a tutte le funzioni con un solo tasto:
 - **[AGENTS.md](AGENTS.md)** — Istruzioni per AI agents e convenzioni progettuali
 - **[MeetWiki/README.md](MeetWiki/README.md)** — Struttura della wiki e setup Obsidian
 - **[.github/copilot-instructions.md](.github/copilot-instructions.md)** — Integrazione con Copilot
+- **[SECURITY.md](SECURITY.md)** — Policy di sicurezza e disclosure responsabile
+
+> **Nota sulla cartella `MeetWiki/`** — è un vault Obsidian valido e
+> **versionabile localmente** dall'utente, ma è esclusa dal `.gitignore`
+> di questo repository pubblico perché contiene dati personali (note di
+> riunioni reali). Il repo distribuisce gli script che la generano, non
+> il suo contenuto.
 
 ### Con Obsidian
 La cartella `MeetWiki/` è un vault Obsidian completo con il plugin `obsidian-kanban` bundled. Apri il vault, abilita i community plugins e gestisci i tuoi task in `MY-KANBAN.md`.
