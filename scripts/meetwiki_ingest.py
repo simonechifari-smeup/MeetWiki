@@ -27,6 +27,7 @@ log = logging.getLogger("meetwiki.ingest")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from meetwiki_common import (  # noqa: E402, I001
     atomic_write_json,
+    atomic_write_text,
     extract_section as _common_extract_section,
     safe_load_json,
     slugify as _common_slugify,
@@ -409,6 +410,34 @@ def main() -> int:
         docs = extract_doc_links(raw)
         tags = auto_tags(title)
 
+        # F28: rileva modifiche manuali alla nota canonica confrontando
+        # l'hash attuale con quello dell'ultima nota generata dall'ingest.
+        current_note_hash = (
+            hashlib.sha256(out_path.read_bytes()).hexdigest() if out_path.exists() else None
+        )
+        last_generated = prev.get("generated_note_hash") if prev else None
+        if (
+            not dry_run
+            and current_note_hash
+            and last_generated
+            and current_note_hash != last_generated
+        ):
+            content_preview = build_note(
+                note_id=note_id, title=title, date=meeting_date,
+                source_rel=f"note_riunioni/{src.relative_to(SOURCE_DIR).as_posix()}",
+                source_hash=digest, ingested_at=now_iso,
+                participants=participants, tags=tags, related_docs=docs,
+                summary=summary, topics=topics, actions=actions, raw=raw,
+            )
+            conflict_path = out_path.with_suffix(".conflict.md")
+            atomic_write_text(conflict_path, content_preview)
+            print(
+                f"  [CONFLICT] {out_path.name}: modifiche manuali rilevate, "
+                f"scritto {conflict_path.name} (manifest non aggiornato)."
+            )
+            skipped_count += 1
+            continue
+
         # Backup precedente se differente
         if prev and out_path.exists():
             old_hash = prev.get("hash", "unknown")[:8]
@@ -416,7 +445,7 @@ def main() -> int:
             if not dry_run:
                 hist_dir.mkdir(parents=True, exist_ok=True)
                 archive = hist_dir / f"{note_id}-{old_hash}.md"
-                archive.write_text(out_path.read_text(encoding="utf-8"), encoding="utf-8")
+                atomic_write_text(archive, out_path.read_text(encoding="utf-8"))
 
         content = build_note(
             note_id=note_id, title=title, date=meeting_date,
@@ -426,7 +455,7 @@ def main() -> int:
             summary=summary, topics=topics, actions=actions, raw=raw,
         )
         if not dry_run:
-            out_path.write_text(content, encoding="utf-8")
+            atomic_write_text(out_path, content)
 
         if prev:
             updated_count += 1
@@ -450,13 +479,15 @@ def main() -> int:
                 participants=participants, tags=tags, related_docs=docs,
                 summary=summary, topics=topics, actions=actions, raw=raw,
             )
-            out_path.write_text(content, encoding="utf-8")
+            if not dry_run:
+                atomic_write_text(out_path, content)
 
         ingested_map[src.name] = {
             "id": note_id,
             "path": str(out_path.relative_to(WIKI_DIR).as_posix()),
             "source": source_rel_final,
             "hash": digest,
+            "generated_note_hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
             "ingested_at": now_iso,
         }
 
