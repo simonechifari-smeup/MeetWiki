@@ -12,6 +12,7 @@ Conforme alla skill .github/skills/meetwiki-actions/SKILL.md.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import re
 import sys
@@ -29,10 +30,12 @@ GLOBAL_FILE = WIKI / "ACTIONS.md"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from meetwiki_common import (  # noqa: E402, I001
+    atomic_write_text,
     extract_section,
     parse_frontmatter,
     safe_load_json,
     slugify as _common_slugify,
+    validate_note_frontmatter,
 )
 
 # `- [ ] [Owner] task...`  oppure  `- [ ] \[Owner\] task...`  oppure  `- [ ] Owner: task...`
@@ -82,7 +85,9 @@ def collect_actions() -> list[dict]:
         if any(part.startswith("_") for part in p.relative_to(NOTES).parts):
             continue
         fm, body = parse_frontmatter(p.read_text(encoding="utf-8"))
-        if not fm.get("id"):
+        errs = validate_note_frontmatter(fm)
+        if errs:
+            print(f"WARN: {p.name}: {'; '.join(errs)}", file=sys.stderr)
             continue
         section = extract_section(body, "Action Items")
         if not section:
@@ -272,7 +277,15 @@ def _purge_owner_dir() -> None:
 
 
 def main() -> int:
-    if "--list" in sys.argv:
+    parser = argparse.ArgumentParser(
+        prog="meetwiki-actions",
+        description="Aggrega gli action item di tutte le note MeetWiki.",
+    )
+    parser.add_argument("--list", action="store_true",
+                        help="elenca action item con hash invece di rigenerare i file")
+    args = parser.parse_args()
+
+    if args.list:
         items = collect_actions()
         for i in items:
             mark = "x" if i["status"] == "done" else " "
@@ -284,10 +297,10 @@ def main() -> int:
     BY_OWNER_DIR.mkdir(parents=True, exist_ok=True)
     STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not STATUS_FILE.exists():
-        STATUS_FILE.write_text("{}\n", encoding="utf-8")
+        atomic_write_text(STATUS_FILE, "{}\n")
 
     items = collect_actions()
-    GLOBAL_FILE.write_text(render_global(items), encoding="utf-8")
+    atomic_write_text(GLOBAL_FILE, render_global(items))
 
     by_owner: dict = defaultdict(list)
     for i in items:
@@ -297,8 +310,7 @@ def main() -> int:
     _purge_owner_dir()
     for owner, group in by_owner.items():
         slug = slugify(owner)
-        (BY_OWNER_DIR / f"{slug}.md").write_text(
-            render_owner(owner, group), encoding="utf-8")
+        atomic_write_text(BY_OWNER_DIR / f"{slug}.md", render_owner(owner, group))
 
     open_n = sum(1 for i in items if i["status"] == "open")
     print(f"Action items: {len(items)} totali, {open_n} aperti, "
