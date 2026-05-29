@@ -51,13 +51,13 @@ Questo progetto segue le **best practices per Obsidian vault** e **gestione dell
 
 ### Obsidian Vault
 - ✅ **`.obsidian/` versionata** — Configurazione consistente per tutti gli utenti
-- ✅ **Plugin bundled** — `obsidian-kanban` (mgmeyers) e `dataview` includenti e pre-configurati
+- ✅ **Plugin bundled** — `obsidian-kanban` (mgmeyers) e `dataview` inclusi e pre-configurati
 - ✅ **Link relativi** — Compatibilità massima tra desktop e sistemi remoti
 - ✅ **Frontmatter YAML** — Metadati strutturati per interoperabilità
 - ✅ **Zero configurazione manuale** — Funziona out-of-the-box su qualsiasi macchina
 
 ### Knowledge Base
-- ✅ **Particionamento temporale** — Note organizzate per mese della riunione
+- ✅ **Partizionamento temporale** — Note organizzate per mese della riunione
 - ✅ **Tagging semantico** — Tag curati e gestiti centralmente (non dinamici)
 - ✅ **Pagine aggregate** — Sintesi tematiche generate automaticamente
 - ✅ **History tracking** — Backup automatici in `_history/` per audit trail
