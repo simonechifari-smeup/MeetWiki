@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "meetwiki"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pipeline da Gmail/Gemini a una wiki LLM-ready di note di riunioni."
 readme = "README.md"
 requires-python = ">=3.11"
