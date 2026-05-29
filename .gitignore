@@ -27,3 +27,7 @@ Thumbs.db
 .DS_Store
 
 MeetWiki
+
+# Review artifacts (locali, non versionati)
+docs/REVIEW_REPORT.md
+docs/REVIEW_PROMPT.md
