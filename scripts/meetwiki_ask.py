@@ -34,10 +34,11 @@ NOTES = WIKI / "notes"
 INDEX_FILE = WIKI / ".meta" / "search_index.json"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from meetwiki_common import (  # noqa: E402
+from meetwiki_common import (  # noqa: E402, I001
     atomic_write_json,
     parse_frontmatter,
     safe_load_json,
+    validate_note_frontmatter,
 )
 
 SECTION_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
@@ -133,7 +134,9 @@ def build_index() -> dict:
         if any(part.startswith("_") for part in p.relative_to(NOTES).parts):
             continue
         fm, body = parse_frontmatter(p.read_text(encoding="utf-8"))
-        if not fm.get("id"):
+        errs = validate_note_frontmatter(fm)
+        if errs:
+            print(f"WARN: {p.name}: {'; '.join(errs)}", file=sys.stderr)
             continue
         rel = p.relative_to(WIKI).as_posix()
         # chunk 0: titolo + tags + partecipanti (boost di matching)

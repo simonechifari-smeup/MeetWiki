@@ -21,6 +21,7 @@ MIN_NOTES = 2  # soglia minima per generare la pagina aggregata
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from meetwiki_common import (  # noqa: E402, I001
+    atomic_write_text,
     extract_section,
     parse_frontmatter as _common_parse_frontmatter,
     slugify as _common_slugify,
@@ -212,7 +213,7 @@ def main() -> int:
         if len(group) < MIN_NOTES:
             continue
         out = TOPICS / f"{tag}.md"
-        out.write_text(render_topic(tag, group), encoding="utf-8")
+        atomic_write_text(out, render_topic(tag, group))
         topic_files += 1
 
     person_files = 0
@@ -220,7 +221,7 @@ def main() -> int:
         if len(group) < MIN_NOTES:
             continue
         out = PEOPLE / f"{slugify(person)}.md"
-        out.write_text(render_person(person, group), encoding="utf-8")
+        atomic_write_text(out, render_person(person, group))
         person_files += 1
 
     skipped_tags = sum(1 for g in by_tag.values() if len(g) < MIN_NOTES)

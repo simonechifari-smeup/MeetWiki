@@ -43,7 +43,7 @@ ENV_FILE = ROOT / ".env"
 # Riusa il parser/estrattore di meetwiki_actions.py per non duplicare logica.
 # `scripts/` e' gia' in sys.path[0] perche' lo script e' lanciato da li'.
 from meetwiki_actions import collect_actions, slugify  # noqa: E402
-from meetwiki_common import atomic_write_json, safe_load_json  # noqa: E402
+from meetwiki_common import atomic_write_json, atomic_write_text, safe_load_json  # noqa: E402
 
 COLUMNS = ["Open", "In Progress", "Blocked", "Done"]
 STATUS_TO_COL = {"open": "Open", "in_progress": "In Progress",
@@ -173,9 +173,10 @@ def export_boards(items: list[dict], owner: str,
                 f"{len(my_items)} totali). "
                 f"Drag&drop tra colonne per cambiare stato, poi "
                 f"`meetwiki_kanban.py --sync`.")
-    MY_KANBAN.write_text(
+    atomic_write_text(
+        MY_KANBAN,
         render_board(f"My Kanban — {owner}", my_items, MY_KANBAN, subtitle),
-        encoding="utf-8")
+    )
 
     n_boards = 1
     if not me_only:
@@ -193,8 +194,9 @@ def export_boards(items: list[dict], owner: str,
             out = KANBAN_DIR / f"{slug}.md"
             sub = (f"Action items di **{own}** "
                    f"({sum(1 for i in group if i['status']=='open')} aperti).")
-            out.write_text(render_board(f"Kanban — {own}", group, out, sub),
-                           encoding="utf-8")
+            atomic_write_text(
+                out, render_board(f"Kanban — {own}", group, out, sub),
+            )
             n_boards += 1
     return n_boards, MY_KANBAN
 

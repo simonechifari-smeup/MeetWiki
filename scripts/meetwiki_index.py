@@ -14,7 +14,11 @@ WIKI = ROOT / "MeetWiki"
 NOTES = WIKI / "notes"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from meetwiki_common import parse_frontmatter as _common_parse_frontmatter  # noqa: E402
+from meetwiki_common import (  # noqa: E402, I001
+    atomic_write_text,
+    parse_frontmatter as _common_parse_frontmatter,
+    validate_note_frontmatter,
+)
 
 MONTHS_IT = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
              "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
@@ -33,8 +37,9 @@ def load_notes() -> list[dict]:
         if any(part.startswith("_") for part in p.relative_to(NOTES).parts):
             continue
         fm = parse_frontmatter(p.read_text(encoding="utf-8"))
-        if not fm.get("id") or not fm.get("date"):
-            print(f"WARN: frontmatter mancante in {p.name}", file=sys.stderr)
+        errs = validate_note_frontmatter(fm)
+        if errs:
+            print(f"WARN: {p.name}: {'; '.join(errs)}", file=sys.stderr)
             continue
         rel = p.relative_to(NOTES).as_posix()
         fm["_path"] = f"notes/{rel}"
@@ -97,9 +102,9 @@ def gen_people(notes: list[dict]) -> str:
 
 def main() -> int:
     notes = load_notes()
-    (WIKI / "INDEX.md").write_text(gen_index(notes), encoding="utf-8")
-    (WIKI / "TAGS.md").write_text(gen_tags(notes), encoding="utf-8")
-    (WIKI / "PEOPLE.md").write_text(gen_people(notes), encoding="utf-8")
+    atomic_write_text(WIKI / "INDEX.md", gen_index(notes))
+    atomic_write_text(WIKI / "TAGS.md", gen_tags(notes))
+    atomic_write_text(WIKI / "PEOPLE.md", gen_people(notes))
     tags_count = len({t for n in notes for t in (n.get("tags") or [])})
     people_count = len({p for n in notes for p in (n.get("participants") or [])})
     print(f"Indici rigenerati: {len(notes)} note, {tags_count} tag, {people_count} persone.")

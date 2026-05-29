@@ -32,7 +32,12 @@ WEEKLY = DIGESTS / "weekly"
 MONTHLY = DIGESTS / "monthly"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from meetwiki_common import extract_section, parse_frontmatter  # noqa: E402
+from meetwiki_common import (  # noqa: E402, I001
+    atomic_write_text,
+    extract_section,
+    parse_frontmatter,
+    validate_note_frontmatter,
+)
 
 MONTHS_IT = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
              "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
@@ -56,7 +61,9 @@ def load_all_notes() -> list[dict]:
         if any(part.startswith("_") for part in p.relative_to(NOTES).parts):
             continue
         fm, body = parse_frontmatter(p.read_text(encoding="utf-8"))
-        if not fm.get("id") or not fm.get("date"):
+        errs = validate_note_frontmatter(fm)
+        if errs:
+            print(f"WARN: {p.name}: {'; '.join(errs)}", file=sys.stderr)
             continue
         try:
             d = datetime.strptime(fm["date"], "%Y-%m-%d").date()
@@ -245,7 +252,7 @@ def generate_one(period: str, target_date: date, all_notes: list[dict]) -> Path:
     notes_in = filter_period(all_notes, start, end)
     content = render_digest(label, human, start, end, notes_in, all_notes)
     out = out_dir / f"{label}.md"
-    out.write_text(content, encoding="utf-8")
+    atomic_write_text(out, content)
     return out
 
 
