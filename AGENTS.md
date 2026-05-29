@@ -45,6 +45,7 @@ Preferire SEMPRE la skill orchestratrice quando possibile.
 | `meetwiki-kanban`    | Board Obsidian Kanban + sync bidirezionale dello stato                |
 | `meetwiki-search`    | Grep esatto sulle riunioni (NON modifica file)                        |
 | `meetwiki-ask`       | Q&A BM25 (retrieval RAG-style con citazioni)                          |
+| `docs-review`        | Revisiona e integra inline tutta la documentazione del progetto       |
 
 Leggere `SKILL.md` della skill prima di eseguirla.
 
@@ -119,6 +120,7 @@ Leggere `SKILL.md` della skill prima di eseguirla.
 | Layout cartelle (`notes/`, `archive/`)  | Aggiornare README.md + AGENTS.md + skill rilevanti           |
 | Nuovo script `scripts/meetwiki_X.py`    | Creare `.github/skills/meetwiki-X/SKILL.md` + registrarla in `.github/copilot-instructions.md` + tabella README |
 | Nuova skill                             | Aggiungerla a README.md tabella skill + `copilot-instructions.md` + AGENTS.md |
+| Modifiche a docs/ o README.md           | Eseguire `docs-review` per verificare allineamento complessivo        |
 | Cambiamenti al formato manifest         | Documentare in `MeetWiki/.meta/schema.md` se serve           |
 
 ## Cosa NON fare

@@ -3,7 +3,7 @@
 ## Prerequisiti
 
 - **Windows 10/11**
-- **Python 3.12+** (testato con 3.14)
+- **Python 3.11+** (testato con 3.14)
 - **Google Chrome** installato e loggato con il tuo account Google
 - **Git** (opzionale, per versionamento)
 - **Obsidian** (opzionale, per Kanban e navigazione vault)

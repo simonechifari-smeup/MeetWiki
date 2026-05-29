@@ -30,6 +30,9 @@ Questo è tutto per l'uso giornaliero. La pipeline si occupa di tutto: importazi
 
 # Pulizia pagine aggregate stale
 .venv\Scripts\python.exe scripts\meetwiki_update.py --clean
+
+# Anteprima senza scritture (dry-run)
+.venv\Scripts\python.exe scripts\meetwiki_update.py --dry-run
 ```
 
 ### Ricerca
@@ -50,6 +53,16 @@ Questo è tutto per l'uso giornaliero. La pipeline si occupa di tutto: importazi
 
 # Lista action items con hash
 .venv\Scripts\python.exe scripts\meetwiki_actions.py --list
+```
+
+### Ingest
+
+```powershell
+# Solo ingest, con log dettagliato (utile per debug tag)
+.venv\Scripts\python.exe scripts\meetwiki_ingest.py --verbose
+
+# Anteprima ingest senza scritture
+.venv\Scripts\python.exe scripts\meetwiki_ingest.py --dry-run
 ```
 
 ### Kanban
@@ -95,6 +108,19 @@ Se usi VS Code con GitHub Copilot, le skill sono disponibili direttamente in cha
 | `meetwiki-ingest` | "importa le nuove note" |
 | `meetwiki-index` | "rigenera gli indici" |
 | `meetwiki-summarize` | "crea pagina riassunto su Z" |
+
+---
+
+## Sviluppo e test
+
+```powershell
+# Esegui la suite di test
+.venv\Scripts\python.exe -m pytest -q
+
+# Linting
+.venv\Scripts\python.exe -m ruff check scripts/
+.venv\Scripts\python.exe -m ruff check scripts/ --fix
+```
 
 ---
 
