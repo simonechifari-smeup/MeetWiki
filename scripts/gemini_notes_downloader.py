@@ -78,37 +78,29 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
+# Utility condivise di scrittura/lettura JSON atomica e safe-load
+import sys as _sys  # noqa: E402
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from meetwiki_common import atomic_write_json, safe_load_json  # noqa: E402
+
+
 # ---------------------------------------------------------------------------
 # Utilita
 # ---------------------------------------------------------------------------
 def load_processed() -> set:
-    if PROCESSED_FILE.exists():
-        try:
-            return set(json.loads(PROCESSED_FILE.read_text(encoding="utf-8")))
-        except (json.JSONDecodeError, ValueError):
-            return set()
-    return set()
+    return set(safe_load_json(PROCESSED_FILE, [], logger=log))
 
 
 def save_processed(processed: set) -> None:
-    PROCESSED_FILE.write_text(
-        json.dumps(sorted(processed), indent=2), encoding="utf-8"
-    )
+    atomic_write_json(PROCESSED_FILE, sorted(processed))
 
 
 def load_scanned() -> set:
-    if SCANNED_FILE.exists():
-        try:
-            return set(json.loads(SCANNED_FILE.read_text(encoding="utf-8")))
-        except (json.JSONDecodeError, ValueError):
-            return set()
-    return set()
+    return set(safe_load_json(SCANNED_FILE, [], logger=log))
 
 
 def save_scanned(scanned: set) -> None:
-    SCANNED_FILE.write_text(
-        json.dumps(sorted(scanned), indent=2), encoding="utf-8"
-    )
+    atomic_write_json(SCANNED_FILE, sorted(scanned))
 
 
 def sanitize_filename(name: str) -> str:
@@ -169,7 +161,13 @@ def _parse_date(date_str: str) -> str:
             return datetime.strptime(date_str.strip(), fmt).strftime("%Y-%m-%d")
         except ValueError:
             continue
-    return datetime.now().strftime("%Y-%m-%d")
+    fallback = datetime.now().strftime("%Y-%m-%d")
+    log.warning(
+        "Data email non riconosciuta (%r): fallback a oggi (%s). "
+        "Il file potrebbe finire nel mese sbagliato.",
+        date_str, fallback,
+    )
+    return fallback
 
 
 # ---------------------------------------------------------------------------
@@ -220,8 +218,8 @@ def get_doc_title(page, doc_id: str) -> str:
             val = page.locator("input.docs-title-input").input_value(timeout=3000)
             if val:
                 return val.strip()
-        except Exception:
-            pass
+        except Exception as exc:
+            log.debug("docs-title-input fallback fallito per %s: %s", doc_id, exc)
         return doc_id
     except Exception:
         return doc_id
@@ -257,8 +255,8 @@ def get_email_items(page, processed: set) -> list:
     # Porta la tab in primo piano (Gmail può pausare il rendering in background)
     try:
         page.bring_to_front()
-    except Exception:
-        pass
+    except Exception as exc:
+        log.debug("bring_to_front fallito: %s", exc)
 
     # Selettore robusto: Gmail può usare tr.zA oppure tr[role='row'] dentro div[role='main']
     SEL = "div[role='main'] tr.zA, div[role='main'] tr[jsaction]"
@@ -423,8 +421,24 @@ def _chrome_is_running() -> bool:
 
 
 def _kill_chrome() -> None:
+    """Termina TUTTI i processi chrome.exe dell'utente. Distruttivo: chiede
+    conferma se la sessione e' interattiva (F03)."""
     if not _chrome_is_running():
         return
+    auto = os.getenv("MEETWIKI_KILL_CHROME", "").lower() in ("1", "true", "yes")
+    if not auto and _sys.stdin.isatty():
+        log.warning(
+            "Chrome e' attivo. Per usare il debug port CDP serve chiuderlo "
+            "(tutti i tab non salvati verranno persi)."
+        )
+        try:
+            answer = input("Procedere con la chiusura forzata di Chrome? [y/N]: ").strip().lower()
+        except EOFError:
+            answer = ""
+        if answer not in ("y", "yes", "s", "si"):
+            log.error("Annullato dall'utente. Chiudi Chrome manualmente e riprova "
+                      "(oppure imposta MEETWIKI_KILL_CHROME=1 per saltare il prompt).")
+            raise SystemExit(1)
     log.info("Chiusura Chrome in corso...")
     subprocess.run(["taskkill", "/F", "/IM", "chrome.exe"], capture_output=True)
     for _ in range(30):
@@ -455,8 +469,8 @@ def _prepare_profile() -> Path:
         for lock in PERSISTENT_PROFILE_DIR.rglob(lock_name):
             try:
                 lock.unlink()
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug("unlink %s fallito: %s", lock, exc)
     return PERSISTENT_PROFILE_DIR
 
 
@@ -493,6 +507,7 @@ def run() -> None:
     chrome_args = [
         CHROME_EXE,
         f"--remote-debugging-port={CDP_PORT}",
+        "--remote-debugging-address=127.0.0.1",
         f"--user-data-dir={profile_dir}",
         "--profile-directory=Default",
         "--no-first-run",
@@ -504,116 +519,124 @@ def run() -> None:
     log.info("Avvio Chrome con debug port %d...", CDP_PORT)
     chrome_proc = subprocess.Popen(chrome_args)
 
-    if not _wait_for_cdp(CDP_PORT):
-        log.error("Chrome non ha risposto sulla porta %d entro 15 secondi.", CDP_PORT)
-        chrome_proc.terminate()
-        return
-    log.info("Chrome pronto.")
-
-    with sync_playwright() as pw:
-        try:
-            browser = pw.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
-        except Exception as exc:
-            log.error("Connessione CDP fallita: %s", exc)
+    try:
+        if not _wait_for_cdp(CDP_PORT):
+            log.error("Chrome non ha risposto sulla porta %d entro 15 secondi.", CDP_PORT)
             chrome_proc.terminate()
             return
+        log.info("Chrome pronto.")
 
-        context = browser.contexts[0] if browser.contexts else browser.new_context(
-            accept_downloads=True, downloads_path=str(OUTPUT_DIR)
-        )
-        page = context.pages[0] if context.pages else context.new_page()
-
-        try:
-            # Naviga su Gmail e aspetta che sia completamente caricato.
-            # Se l'utente deve fare il login, aspettiamo fino a 5 minuti.
-            log.info("Apertura Gmail — se richiesto, esegui il login nel browser...")
-            page.goto(
-                "https://mail.google.com/mail/u/0/",
-                wait_until="domcontentloaded",
-                timeout=30_000,
-            )
-
-            # Aspetta fino a 5 minuti: o vediamo la inbox Gmail oppure la pagina di login si risolve
+        with sync_playwright() as pw:
             try:
-                page.wait_for_selector(
-                    "div[role='main'], div.AO, .T-I.T-I-KE",  # inbox o compose button
-                    timeout=300_000,  # 5 minuti
-                )
-                log.info("Gmail caricato correttamente.")
-            except PWTimeout:
-                log.error("Gmail non si e' caricato entro 5 minuti. Interruzione.")
+                browser = pw.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
+            except Exception as exc:
+                log.error("Connessione CDP fallita: %s", exc)
+                chrome_proc.terminate()
                 return
 
-            log.info("Ricerca email in corso...")
-            emails = get_email_items(page, processed)
-            log.info("Lettura email completata.")
+            context = browser.contexts[0] if browser.contexts else browser.new_context(
+                accept_downloads=True, downloads_path=str(OUTPUT_DIR)
+            )
+            page = context.pages[0] if context.pages else context.new_page()
 
-            if not emails:
-                log.info("Nessuna nuova email da processare.")
-                save_processed(processed)
-            else:
-                # Raccogli nomi file gia presenti (inbox + archive) per dedup aggiuntiva
-                existing_files = {f.stem for f in OUTPUT_DIR.glob("*.md")}
-                archive_dir = OUTPUT_DIR / "archive"
-                if archive_dir.exists():
-                    existing_files |= {f.stem for f in archive_dir.rglob("*.md")}
+            try:
+                # Naviga su Gmail e aspetta che sia completamente caricato.
+                # Se l'utente deve fare il login, aspettiamo fino a 5 minuti.
+                log.info("Apertura Gmail — se richiesto, esegui il login nel browser...")
+                page.goto(
+                    "https://mail.google.com/mail/u/0/",
+                    wait_until="domcontentloaded",
+                    timeout=30_000,
+                )
 
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    tmp_path = Path(tmpdir)
+                # Aspetta fino a 5 minuti: o vediamo la inbox Gmail oppure la pagina di login si risolve
+                try:
+                    page.wait_for_selector(
+                        "div[role='main'], div.AO, .T-I.T-I-KE",  # inbox o compose button
+                        timeout=300_000,  # 5 minuti
+                    )
+                    log.info("Gmail caricato correttamente.")
+                except PWTimeout:
+                    log.error("Gmail non si e' caricato entro 5 minuti. Interruzione.")
+                    return
 
-                    for item in emails:
-                        date_prefix = item["date"]
-                        doc_ids = item["doc_ids"]
+                log.info("Ricerca email in corso...")
+                emails = get_email_items(page, processed)
+                log.info("Lettura email completata.")
 
-                        for doc_id in doc_ids:
-                            title = get_doc_title(page, doc_id)
-                            log.info("  Titolo: %s", title)
+                if not emails:
+                    log.info("Nessuna nuova email da processare.")
+                    save_processed(processed)
+                else:
+                    # Raccogli nomi file gia presenti (inbox + archive) per dedup aggiuntiva
+                    existing_files = {f.stem for f in OUTPUT_DIR.glob("*.md")}
+                    archive_dir = OUTPUT_DIR / "archive"
+                    if archive_dir.exists():
+                        existing_files |= {f.stem for f in archive_dir.rglob("*.md")}
 
-                            base_name = sanitize_filename(f"{date_prefix} - {title}")
-                            # Skip se file gia presente
-                            if base_name in existing_files:
-                                log.info("  -> Gia scaricato: %s, salto.", base_name)
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        tmp_path = Path(tmpdir)
+
+                        for item in emails:
+                            date_prefix = item["date"]
+                            doc_ids = item["doc_ids"]
+
+                            for doc_id in doc_ids:
+                                title = get_doc_title(page, doc_id)
+                                log.info("  Titolo: %s", title)
+
+                                base_name = sanitize_filename(f"{date_prefix} - {title}")
+                                # Skip se file gia presente
+                                if base_name in existing_files:
+                                    log.info("  -> Gia scaricato: %s, salto.", base_name)
+                                    processed.add(doc_id)
+                                    save_processed(processed)
+                                    continue
+
+                                downloaded = download_doc_as_markdown(page, doc_id, tmp_path)
+                                if not downloaded:
+                                    continue
+
+                                dest = OUTPUT_DIR / (base_name + ".md")
+                                counter = 1
+                                while dest.exists():
+                                    dest = OUTPUT_DIR / f"{base_name} ({counter}).md"
+                                    counter += 1
+
+                                shutil.move(str(downloaded), str(dest))
+                                log.info("  Salvato: %s", dest)
+                                total_saved += 1
                                 processed.add(doc_id)
                                 save_processed(processed)
-                                continue
 
-                            downloaded = download_doc_as_markdown(page, doc_id, tmp_path)
-                            if not downloaded:
-                                continue
+            finally:
+                page.close()
+                # Chiudi Chrome in modo pulito via CDP
+                try:
+                    cdp = browser.new_browser_cdp_session()
+                    cdp.send("Browser.close")
+                except Exception as exc:
+                    log.debug("Browser.close via CDP fallito: %s", exc)
+                browser.close()
 
-                            dest = OUTPUT_DIR / (base_name + ".md")
-                            counter = 1
-                            while dest.exists():
-                                dest = OUTPUT_DIR / f"{base_name} ({counter}).md"
-                                counter += 1
+        try:
+            chrome_proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            chrome_proc.terminate()
+            chrome_proc.wait(timeout=5)
 
-                            shutil.move(str(downloaded), str(dest))
-                            log.info("  Salvato: %s", dest)
-                            total_saved += 1
-                            processed.add(doc_id)
-                            save_processed(processed)
+        log.info("=== Completato. File salvati: %d ===", total_saved)
 
-        finally:
-            page.close()
-            # Chiudi Chrome in modo pulito via CDP
+    finally:
+        # Garantito: riapri Chrome con il profilo utente anche se qualcosa e'
+        # fallito a meta'. Senza questo, l'utente trova Chrome chiuso senza
+        # preavviso (F19).
+        if chrome_was_running:
+            log.info("Riapertura Chrome...")
             try:
-                cdp = browser.new_browser_cdp_session()
-                cdp.send("Browser.close")
-            except Exception:
-                pass
-            browser.close()
-
-    try:
-        chrome_proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        chrome_proc.terminate()
-        chrome_proc.wait(timeout=5)
-
-    log.info("=== Completato. File salvati: %d ===", total_saved)
-
-    if chrome_was_running:
-        log.info("Riapertura Chrome...")
-        subprocess.Popen([CHROME_EXE, f"--profile-directory={CHROME_PROFILE}"])
+                subprocess.Popen([CHROME_EXE, f"--profile-directory={CHROME_PROFILE}"])
+            except Exception as exc:
+                log.error("Impossibile riaprire Chrome: %s", exc)
 
 
 if __name__ == "__main__":
