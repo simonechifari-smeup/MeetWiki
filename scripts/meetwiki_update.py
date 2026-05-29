@@ -14,6 +14,7 @@ Uso:
 """
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -60,12 +61,34 @@ def _run(args: list[str]) -> None:
 
 
 def main() -> int:
-    force = "--force" in sys.argv
-    clean = "--clean" in sys.argv
-    reset = "--reset" in sys.argv
-    skip_digest = "--skip-digest" in sys.argv
-    skip_search = "--skip-search" in sys.argv
-    skip_kanban = "--skip-kanban" in sys.argv
+    p = argparse.ArgumentParser(
+        prog="meetwiki-update",
+        description="Pipeline MeetWiki completa: ingest -> index -> summarize -> actions -> digest -> search -> kanban.",
+    )
+    p.add_argument("--force", action="store_true", help="re-ingest di tutte le note")
+    p.add_argument("--clean", action="store_true", help="svuota topics/, people/, digests/, actions/ prima")
+    p.add_argument("--reset", action="store_true", help="distruttivo: pulisce tutto e re-ingest (implica --force)")
+    p.add_argument("--skip-digest", action="store_true", help="salta digest settimanali/mensili")
+    p.add_argument("--skip-search", action="store_true", help="salta rebuild indice ricerca")
+    p.add_argument("--skip-kanban", action="store_true", help="salta sync+export board Obsidian")
+    p.add_argument("--dry-run", action="store_true",
+                   help="esegue solo l'ingest in modalita' dry-run (nessuna scrittura) e salta i passi successivi")
+    a = p.parse_args()
+    force = a.force
+    clean = a.clean
+    reset = a.reset
+    skip_digest = a.skip_digest
+    skip_search = a.skip_search
+    skip_kanban = a.skip_kanban
+    dry_run = a.dry_run
+
+    if dry_run:
+        ingest_args = [str(SCRIPTS / "meetwiki_ingest.py"), "--dry-run"]
+        if force:
+            ingest_args.append("--force")
+        _run(ingest_args)
+        print("\n[DRY-RUN] pipeline interrotta dopo ingest (nessuno step successivo eseguito).")
+        return 0
 
     if reset:
         n = _purge_notes_tree()
