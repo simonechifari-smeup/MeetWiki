@@ -36,6 +36,8 @@ incoerenze, sezioni obsolete e informazioni mancanti. Non genera report: **fa** 
 | `CONTRIBUTING.md` | Comandi lint/test, setup dev |
 | `CHANGELOG.md` | Sezione Unreleased presente e aggiornata |
 
+Se un file nella tabella non esiste ancora, saltalo e segnalalo nel messaggio di commit (es. `docs: allinea documentazione; nota: docs/faq.md non ancora creato`). Non creare file nuovi senza conferma dell'utente.
+
 ## Procedura
 
 ### 1. Raccolta stato attuale
@@ -114,7 +116,7 @@ Per ogni file nella tabella sopra, verificare:
 Per ogni problema trovato:
 1. Leggi il file corrente con `read_file`
 2. Applica la correzione con `replace_string_in_file` o `multi_replace_string_in_file`
-3. Non aggiungere sezioni intere non richieste — correggi solo ciò che è sbagliato o mancante
+3. Non aggiungere sezioni che non esistono gia' nel file, a meno che siano esplicitamente elencate nella checklist sopra. Per le voci della checklist marcate come mancanti, aggiungi solo il contenuto minimo necessario.
 
 ### 4. Verifica finale
 

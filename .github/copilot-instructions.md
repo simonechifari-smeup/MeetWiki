@@ -7,7 +7,8 @@ Questo workspace contiene:
 
 ## Skill MeetWiki disponibili
 
-Quando l'utente lavora con la wiki dei meet, usa le skill in `.github/skills/`:
+Quando l'utente lavora con la wiki dei meet, usa le skill in `.github/skills/`.
+Se l'utente chiede qualcosa non correlato alla wiki o al progetto, rispondi normalmente senza invocare skill.
 
 - **`meetwiki-update`** → pipeline completa: ingest + index + summarize + actions + digest + search index (preferita per "aggiorna la wiki")
 - **`meetwiki-ingest`** → importa nuove note da `note_riunioni/` in `MeetWiki/notes/`
@@ -22,6 +23,7 @@ Quando l'utente lavora con la wiki dei meet, usa le skill in `.github/skills/`:
 - **`docs-review`** → revisiona e integra inline la documentazione (README, AGENTS.md, docs/*.md, skill, CONTRIBUTING)
 
 Leggi sempre il file `SKILL.md` della skill prima di operare.
+Se il file `SKILL.md` non esiste, segnala l'errore all'utente e non procedere con la skill.
 
 ## Flusso tipico
 

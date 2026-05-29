@@ -65,3 +65,7 @@ Ogni action item ha un hash a 10 caratteri deterministico su `(note_id, owner, t
 ## Integrazione
 - Eseguito automaticamente da `meetwiki_update.py`.
 - L'override file `actions_status.json` NON viene mai cancellato dalla pipeline (anche con `--reset`).
+
+## Gestione errori
+- Se lo script fallisce con errore di parsing, verificare che le note abbiano la sezione `## Action Items` ben formattata.
+- Se `actions_status.json` è malformato, validare il JSON prima di ri-eseguire.
