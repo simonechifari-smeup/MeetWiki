@@ -421,33 +421,46 @@ def _chrome_is_running() -> bool:
     return "chrome.exe" in result.stdout
 
 
-def _kill_chrome() -> None:
-    """Termina TUTTI i processi chrome.exe dell'utente. Distruttivo: chiede
-    conferma se la sessione e' interattiva (F03)."""
+def _kill_chrome() -> bool:
+    """Termina i Chrome dell'utente: SOLO se `MEETWIKI_KILL_CHROME=1` o
+    se l'utente lo conferma esplicitamente al prompt (F03).
+
+    Default: non tocca nulla e ritorna False. Il downloader avvia comunque
+    il proprio Chrome con `--user-data-dir` dedicato e `CDP_PORT` distinto,
+    quindi convivere con un Chrome utente gia' aperto e' supportato; il
+    kill globale resta disponibile come fallback opt-in per chi ne ha bisogno.
+    Ritorna True se Chrome e' stato effettivamente terminato.
+    """
     if not _chrome_is_running():
-        return
+        return False
     auto = os.getenv("MEETWIKI_KILL_CHROME", "").lower() in ("1", "true", "yes")
-    if not auto and _sys.stdin.isatty():
+    if not auto:
+        if not _sys.stdin.isatty():
+            log.info(
+                "Chrome utente attivo: non lo tocco (MEETWIKI_KILL_CHROME non impostato). "
+                "Avvio comunque il Chrome dedicato del downloader."
+            )
+            return False
         log.warning(
-            "Chrome e' attivo. Per usare il debug port CDP serve chiuderlo "
-            "(tutti i tab non salvati verranno persi)."
+            "Chrome e' attivo. Il downloader puo' coesistere con il tuo Chrome "
+            "(usa profilo e porta dedicati). Premi Invio per continuare senza chiuderlo, "
+            "oppure scrivi 'y' per chiudere TUTTI i processi chrome.exe (tab non salvati persi)."
         )
         try:
-            answer = input("Procedere con la chiusura forzata di Chrome? [y/N]: ").strip().lower()
+            answer = input("Chiudere tutto Chrome? [y/N]: ").strip().lower()
         except EOFError:
             answer = ""
         if answer not in ("y", "yes", "s", "si"):
-            log.error("Annullato dall'utente. Chiudi Chrome manualmente e riprova "
-                      "(oppure imposta MEETWIKI_KILL_CHROME=1 per saltare il prompt).")
-            raise SystemExit(1)
-    log.info("Chiusura Chrome in corso...")
+            return False
+    log.info("Chiusura Chrome in corso (opt-in MEETWIKI_KILL_CHROME)...")
     subprocess.run(["taskkill", "/F", "/IM", "chrome.exe"], capture_output=True)
     for _ in range(30):
         time.sleep(0.5)
         if not _chrome_is_running():
             log.info("Chrome chiuso.")
-            return
+            return True
     log.warning("Alcuni processi Chrome potrebbero essere ancora attivi.")
+    return True
 
 
 # Cartella profilo persistente: viene creata una sola volta.
@@ -500,7 +513,7 @@ def run() -> None:
     total_saved = 0
 
     chrome_was_running = _chrome_is_running()
-    _kill_chrome()
+    chrome_killed = _kill_chrome()
     time.sleep(1)
 
     profile_dir = _prepare_profile()
@@ -629,10 +642,9 @@ def run() -> None:
         log.info("=== Completato. File salvati: %d ===", total_saved)
 
     finally:
-        # Garantito: riapri Chrome con il profilo utente anche se qualcosa e'
-        # fallito a meta'. Senza questo, l'utente trova Chrome chiuso senza
-        # preavviso (F19).
-        if chrome_was_running:
+        # Riapri Chrome utente SOLO se l'abbiamo effettivamente chiuso noi
+        # (opt-in MEETWIKI_KILL_CHROME). Default: chrome_killed=False -> non tocchiamo nulla (F03).
+        if chrome_was_running and chrome_killed:
             log.info("Riapertura Chrome...")
             try:
                 subprocess.Popen([CHROME_EXE, f"--profile-directory={CHROME_PROFILE}"])
