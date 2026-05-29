@@ -65,7 +65,7 @@ Per ogni file nella tabella sopra, verificare:
 
 #### README.md
 - [ ] Versione Python nel badge allineata a `pyproject.toml` (`requires-python`)
-- [ ] Badge Lint punta al workflow corretto (`.github/workflows/lint.yml`)
+- [ ] Badge CI punta al workflow corretto (`.github/workflows/ci.yml`)
 - [ ] Tabella script completa: include `meetwiki_common.py` (utility) se elencato
 - [ ] Sezione "Struttura" riflette la cartella `tests/` e `pyproject.toml`
 - [ ] Comandi rapidi includono `--dry-run` e `--verbose` dove rilevante
