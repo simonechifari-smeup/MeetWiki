@@ -25,11 +25,9 @@ Conforme alla skill .github/skills/meetwiki-kanban/SKILL.md.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import sys
-import unicodedata
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -44,9 +42,8 @@ ENV_FILE = ROOT / ".env"
 
 # Riusa il parser/estrattore di meetwiki_actions.py per non duplicare logica.
 # `scripts/` e' gia' in sys.path[0] perche' lo script e' lanciato da li'.
-from meetwiki_actions import collect_actions, slugify
-from meetwiki_common import atomic_write_json, safe_load_json
-
+from meetwiki_actions import collect_actions, slugify  # noqa: E402
+from meetwiki_common import atomic_write_json, safe_load_json  # noqa: E402
 
 COLUMNS = ["Open", "In Progress", "Blocked", "Done"]
 STATUS_TO_COL = {"open": "Open", "in_progress": "In Progress",

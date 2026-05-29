@@ -20,7 +20,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -32,7 +32,7 @@ WEEKLY = DIGESTS / "weekly"
 MONTHLY = DIGESTS / "monthly"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from meetwiki_common import parse_frontmatter, extract_section  # noqa: E402
+from meetwiki_common import extract_section, parse_frontmatter  # noqa: E402
 
 MONTHS_IT = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
              "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]

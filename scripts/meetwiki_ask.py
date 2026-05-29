@@ -20,7 +20,6 @@ Conforme alla skill .github/skills/meetwiki-ask/SKILL.md.
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import re
 import sys
@@ -37,8 +36,8 @@ INDEX_FILE = WIKI / ".meta" / "search_index.json"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from meetwiki_common import (  # noqa: E402
     atomic_write_json,
-    safe_load_json,
     parse_frontmatter,
+    safe_load_json,
 )
 
 SECTION_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
@@ -57,7 +56,7 @@ STOPWORDS = {
     "ho", "hai", "ha", "fare", "fa", "fai", "fanno", "come", "dove", "quando",
     "perche", "anche", "ancora", "gia", "piu", "meno", "molto", "poco", "tutto",
     "tutti", "tutte", "tutta", "stesso", "stessa", "ogni", "alcuni", "alcune",
-    "the", "a", "an", "of", "to", "in", "on", "for", "with", "and", "or", "but",
+    "the", "an", "of", "to", "on", "for", "with", "and", "or", "but",
     "is", "are", "was", "were", "be", "been", "being", "has", "have", "had",
     "do", "does", "did", "this", "that", "these", "those", "it", "its",
 }
@@ -105,7 +104,8 @@ def chunk_text(text: str) -> list[str]:
             sentences = re.split(r"(?<=[.!?])\s+", p)
             for s in sentences:
                 if len(buf) + len(s) + 1 > CHUNK_TARGET and buf:
-                    chunks.append(buf.strip()); buf = ""
+                    chunks.append(buf.strip())
+                    buf = ""
                 buf = (buf + " " + s).strip() if buf else s
             continue
         if len(buf) + len(p) + 2 > CHUNK_TARGET and buf:
@@ -236,7 +236,6 @@ def render_results(query: str, results: list[dict]) -> str:
     out = [f"# Risultati per: {query!r}", "",
            f"Top {len(results)} chunk per rilevanza (BM25).", ""]
     for i, r in enumerate(results, 1):
-        link = f"../{r['path']}"  # relativo da .meta/ ipotetico; usiamo path nudo
         out.append(f"## {i}. [{r['date']}] {r['title']} — _{r['section']}_  "
                    f"(score {r['score']:.2f})")
         out.append(f"`{r['path']}`")

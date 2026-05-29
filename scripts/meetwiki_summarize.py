@@ -20,10 +20,10 @@ PEOPLE = WIKI / "people"
 MIN_NOTES = 2  # soglia minima per generare la pagina aggregata
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from meetwiki_common import (  # noqa: E402
+from meetwiki_common import (  # noqa: E402, I001
+    extract_section,
     parse_frontmatter as _common_parse_frontmatter,
     slugify as _common_slugify,
-    extract_section,
 )
 
 

@@ -25,13 +25,12 @@ MANIFEST = WIKI_DIR / ".meta" / "manifest.json"
 log = logging.getLogger("meetwiki.ingest")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from meetwiki_common import (  # noqa: E402
+from meetwiki_common import (  # noqa: E402, I001
     atomic_write_json,
+    extract_section as _common_extract_section,
     safe_load_json,
     slugify as _common_slugify,
-    extract_section as _common_extract_section,
 )
-
 
 FILENAME_DATE_RE = re.compile(r"(\d{4})_(\d{2})_(\d{2})")
 FILENAME_TIME_RE = re.compile(r"\d{4}_\d{2}_\d{2}\s+(\d{2})_(\d{2})")

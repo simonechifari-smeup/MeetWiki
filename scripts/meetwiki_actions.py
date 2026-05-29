@@ -13,7 +13,6 @@ Conforme alla skill .github/skills/meetwiki-actions/SKILL.md.
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 import sys
 from collections import defaultdict
@@ -29,10 +28,10 @@ STATUS_FILE = WIKI / ".meta" / "actions_status.json"
 GLOBAL_FILE = WIKI / "ACTIONS.md"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from meetwiki_common import (  # noqa: E402
-    safe_load_json,
-    parse_frontmatter,
+from meetwiki_common import (  # noqa: E402, I001
     extract_section,
+    parse_frontmatter,
+    safe_load_json,
     slugify as _common_slugify,
 )
 

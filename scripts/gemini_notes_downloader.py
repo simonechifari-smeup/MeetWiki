@@ -10,12 +10,11 @@ Usa il tuo Chrome gia loggato a Google per:
 Lo script chiude Chrome se aperto, fa il lavoro, poi lo riapre.
 """
 
+import hashlib
+import logging
 import os
 import re
-import json
-import hashlib
 import shutil
-import logging
 import subprocess
 import tempfile
 import time
@@ -23,7 +22,8 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
+from playwright.sync_api import TimeoutError as PWTimeout
+from playwright.sync_api import sync_playwright
 
 # ---------------------------------------------------------------------------
 # Configurazione
@@ -80,6 +80,7 @@ log = logging.getLogger(__name__)
 
 # Utility condivise di scrittura/lettura JSON atomica e safe-load
 import sys as _sys  # noqa: E402
+
 _sys.path.insert(0, str(Path(__file__).resolve().parent))
 from meetwiki_common import atomic_write_json, safe_load_json  # noqa: E402
 
@@ -112,7 +113,7 @@ def _decode_url_chain(url: str) -> str:
     Decodifica ripetutamente un URL per estrarre la destinazione finale
     da catene di redirect (google.com/url?q=..., urlsand, ecc.).
     """
-    from urllib.parse import unquote, urlparse, parse_qs
+    from urllib.parse import parse_qs, unquote, urlparse
     prev = None
     current = url
     for _ in range(5):  # max 5 livelli di redirect
