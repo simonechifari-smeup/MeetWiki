@@ -30,19 +30,22 @@ from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 # ---------------------------------------------------------------------------
 load_dotenv()
 
-OUTPUT_DIR = Path(os.getenv(
-    "OUTPUT_DIR",
-    r"C:\Users\<user>\Desktop\GMAIL\note_riunioni"
-))
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_LOCALAPPDATA = Path(os.getenv("LOCALAPPDATA", str(Path.home() / "AppData" / "Local")))
 
+OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", str(_REPO_ROOT / "note_riunioni")))
+
+# CHROME_USER_DATA non viene usato dal flusso attuale (lo script usa il profilo
+# persistente dedicato in scripts/chrome_profile/), ma e' mantenuto per
+# retro-compatibilita' se qualcuno lo importa dall'esterno.
 CHROME_USER_DATA = Path(os.getenv(
     "CHROME_USER_DATA",
-    r"C:\Users\<user>\AppData\Local\Google\Chrome\User Data"
+    str(_LOCALAPPDATA / "Google" / "Chrome" / "User Data"),
 ))
 CHROME_PROFILE = os.getenv("CHROME_PROFILE", "Default")
 CHROME_EXE = os.getenv(
     "CHROME_EXE",
-    r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
 )
 
 PROCESSED_FILE = Path(__file__).resolve().parent.parent / ".cache" / "processed_emails.json"
