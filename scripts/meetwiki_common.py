@@ -2,8 +2,10 @@
 
 Pubbliche:
 - atomic_write_json(path, data): write atomica via file temporaneo + replace (F04).
+- atomic_write_text(path, content): variante per output Markdown/testo (F30).
 - safe_load_json(path, default, logger): load con rename-on-corrupt (F08).
 - parse_frontmatter(text) -> (dict, body): parser YAML-like minimale (F09).
+- validate_note_frontmatter(fm) -> list[str]: lista errori per frontmatter note (F29).
 - extract_section(body, heading, level=2): estrae sezione markdown (F09).
 - slugify(text, maxlen=None, fallback=""): slug ASCII kebab-case (F09).
 """
@@ -31,6 +33,18 @@ def atomic_write_json(path: Path, data: Any, *, indent: int | None = 2) -> None:
         json.dumps(data, ensure_ascii=False, indent=indent),
         encoding="utf-8",
     )
+    os.replace(tmp, path)
+
+
+def atomic_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
+    """Scrive testo in modo atomico (write su .tmp + os.replace).
+
+    Evita file troncati su crash/Ctrl+C per note canoniche, history, board
+    Kanban e indici Markdown (F30).
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content, encoding=encoding)
     os.replace(tmp, path)
 
 
@@ -105,6 +119,42 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
                 fm[k] = v.strip('"')
                 list_key = None
     return fm, m.group(2)
+
+
+REQUIRED_NOTE_FIELDS: tuple[str, ...] = (
+    "id",
+    "title",
+    "date",
+    "source",
+    "source_hash",
+    "ingested_at",
+)
+
+_LIST_NOTE_FIELDS: tuple[str, ...] = ("participants", "tags", "related_docs")
+
+
+def validate_note_frontmatter(fm: dict) -> list[str]:
+    """Ritorna lista di errori sul frontmatter di una nota canonica (F29).
+
+    Lista vuota = frontmatter valido. Controlla:
+    - presenza dei campi obbligatori (`REQUIRED_NOTE_FIELDS`);
+    - `date` parsabile come YYYY-MM-DD;
+    - campi lista (`participants`, `tags`, `related_docs`) effettivamente liste.
+    """
+    errors: list[str] = []
+    for key in REQUIRED_NOTE_FIELDS:
+        if not fm.get(key):
+            errors.append(f"campo mancante o vuoto: {key}")
+    date_raw = fm.get("date", "")
+    if date_raw:
+        try:
+            datetime.strptime(str(date_raw), "%Y-%m-%d")
+        except ValueError:
+            errors.append(f"date non valida ('{date_raw}'), atteso YYYY-MM-DD")
+    for key in _LIST_NOTE_FIELDS:
+        if key in fm and not isinstance(fm[key], list):
+            errors.append(f"{key} deve essere una lista YAML")
+    return errors
 
 
 def extract_section(body: str, heading: str, *, level: int = 2) -> str:
