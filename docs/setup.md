@@ -49,6 +49,22 @@ Modifica `.env` con i tuoi valori:
 .venv\Scripts\python.exe -c "from playwright.sync_api import sync_playwright; print('OK')"
 ```
 
+### 5. (Opzionale) Setup per sviluppo
+
+La fonte di verita' per dipendenze e tool e' `pyproject.toml`. Per installare
+anche le dipendenze di sviluppo (`pytest`, `ruff`):
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+
+Dopodiche':
+
+```powershell
+.venv\Scripts\python.exe -m pytest -q          # test
+.venv\Scripts\python.exe -m ruff check scripts # lint
+```
+
 ---
 
 ## Setup Vault Obsidian

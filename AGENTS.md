@@ -25,7 +25,7 @@ Gmail → scripts/gemini_notes_downloader.py → note_riunioni/        (inbox)
 
 ## Stack tecnico
 
-- Python 3.14 in `.venv/` → eseguibile: `.venv\Scripts\python.exe`
+- Python 3.11+ (testato con 3.14) in `.venv/` → eseguibile: `.venv\Scripts\python.exe`. La versione minima vincolante e' `requires-python` in `pyproject.toml`.
 - Playwright 1.44
 - Nessun YAML parser esterno: regex custom (vedi `parse_frontmatter` in `meetwiki_index.py` e `parse_note` in `meetwiki_summarize.py`).
 - Dedup: SHA-256 dei sorgenti in `MeetWiki/.meta/manifest.json`.
@@ -64,8 +64,16 @@ Leggere `SKILL.md` della skill prima di eseguirla.
 # Salta digest o ricostruzione indice ricerca (pipeline piu' veloce)
 .venv\Scripts\python.exe scripts\meetwiki_update.py --skip-digest --skip-search
 
+# Anteprima senza scritture (no file toccati, utile per smoke test)
+.venv\Scripts\python.exe scripts\meetwiki_update.py --dry-run
+
 # Reset distruttivo (chiedere conferma all'utente)
 .venv\Scripts\python.exe scripts\meetwiki_update.py --reset
+
+# Solo ingest (raro: di solito basta meetwiki_update.py)
+.venv\Scripts\python.exe scripts\meetwiki_ingest.py --verbose       # log DEBUG (partecipanti scartati, tag mancanti)
+.venv\Scripts\python.exe scripts\meetwiki_ingest.py --dry-run        # anteprima senza scritture
+.venv\Scripts\python.exe scripts\meetwiki_ingest.py --force          # re-ingest forzato
 
 # Q&A semantico (BM25)
 .venv\Scripts\python.exe scripts\meetwiki_ask.py "decisioni su acronis"

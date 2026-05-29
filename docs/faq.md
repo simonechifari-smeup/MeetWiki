@@ -94,6 +94,40 @@ Il downloader (`gemini_notes_downloader.py`) è specifico per Windows (percorsi 
 
 ---
 
+### Come provo la pipeline senza toccare i file?
+
+Usa `--dry-run` per simulare l'esecuzione senza scritture:
+
+```powershell
+.venv\Scripts\python.exe scripts\meetwiki_update.py --dry-run
+.venv\Scripts\python.exe scripts\meetwiki_ingest.py --dry-run
+```
+
+Per log DEBUG dettagliati (utile per capire perche' un tag non viene assegnato o un partecipante e' scartato): `meetwiki_ingest.py --verbose`.
+
+---
+
+### Come eseguo i test?
+
+```powershell
+.venv\Scripts\python.exe -m pytest -q
+```
+
+I test stanno in `tests/` e coprono le funzioni pure (parsing frontmatter, slugify, hashing action items, tokenizzazione BM25). Usano `tmp_path` e non toccano mai `MeetWiki/`.
+
+---
+
+### Come aggiungo o modifico un flag CLI?
+
+Ogni script `scripts/meetwiki_*.py` usa `argparse`. Aggiungi un `p.add_argument(...)` nel blocco `__main__`, poi aggiorna:
+
+1. `docs/usage.md` (sezione del comando interessato)
+2. `AGENTS.md` (sezione "Comandi rapidi")
+3. La skill corrispondente in `.github/skills/meetwiki-*/SKILL.md`
+4. `CHANGELOG.md` sotto `## [Unreleased]`
+
+---
+
 ## Errori comuni
 
 | Errore | Causa | Soluzione |

@@ -73,6 +73,14 @@
 - Query in linguaggio naturale con filtri per tag/data
 - Retrieval RAG-style con citazioni
 
+### Common (`meetwiki_common.py`)
+- Utility condivise da tutti gli script: `parse_frontmatter`, `extract_section`, `slugify`, `atomic_write_text`, `atomic_write_json`, `safe_load_json`, `validate_note_frontmatter`
+- Scritture atomiche (`.tmp` + `os.replace`) per evitare file corrotti se la pipeline si interrompe
+
+### Test e packaging
+- Suite `pytest` in `tests/` (`test_pure_functions.py`, `test_integration.py`) sulle funzioni pure e su un end-to-end di ingest in `tmp_path`
+- `pyproject.toml` centralizza dipendenze (`[project]`, extras `[project.optional-dependencies] dev`) e configurazione di `ruff` e `pytest`
+
 ## Scelte progettuali
 
 | Scelta                   | Motivazione                                                     |
