@@ -131,6 +131,7 @@ Leggere `SKILL.md` della skill prima di eseguirla.
 - NON suggerire ottimizzazioni non richieste (over-engineering). Cambiare solo cio' che e' chiesto.
 - NON rimuovere o duplicare le ancore `^h{hash10}` nelle board Kanban: rompi il sync bidirezionale.
 - NON eseguire `meetwiki_kanban.py --sync` con le board aperte e non salvate in Obsidian.
+- NON usare MAI GitKraken/GitLens MCP tools. Usare sempre `git` direttamente nel terminale.
 
 ## Obsidian + Kanban
 
