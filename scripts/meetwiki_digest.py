@@ -17,6 +17,7 @@ Conforme alla skill .github/skills/meetwiki-digest/SKILL.md.
 """
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from collections import Counter, defaultdict
@@ -30,38 +31,12 @@ DIGESTS = WIKI / "digests"
 WEEKLY = DIGESTS / "weekly"
 MONTHLY = DIGESTS / "monthly"
 
-FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)", re.DOTALL)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from meetwiki_common import parse_frontmatter, extract_section  # noqa: E402
+
 MONTHS_IT = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
              "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
-
-def parse_frontmatter(text: str) -> tuple[dict, str]:
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return {}, text
-    fm: dict = {}
-    list_key = None
-    for line in m.group(1).splitlines():
-        if line.startswith("  - ") and list_key:
-            fm.setdefault(list_key, []).append(line[4:].strip().strip('"'))
-            continue
-        if ":" in line:
-            k, _, v = line.partition(":")
-            k = k.strip(); v = v.strip()
-            if v == "":
-                fm[k] = []; list_key = k
-            elif v == "[]":
-                fm[k] = []; list_key = None
-            else:
-                fm[k] = v.strip('"'); list_key = None
-    return fm, m.group(2)
-
-
-def extract_section(body: str, heading: str) -> str:
-    pat = re.compile(rf"^##\s+{re.escape(heading)}\s*\n(.*?)(?=^##\s+|\Z)",
-                     re.MULTILINE | re.DOTALL)
-    m = pat.search(body)
-    return m.group(1).strip() if m else ""
 
 
 def short_summary(body: str, max_chars: int = 220) -> str:
@@ -292,22 +267,24 @@ def all_periods(period: str, all_notes: list[dict]) -> list[date]:
 
 
 def parse_args(argv: list[str]) -> tuple[str, date | None, bool]:
-    period = "week"
-    target = None
-    do_all = False
-    i = 0
-    while i < len(argv):
-        a = argv[i]
-        if a == "--period" and i + 1 < len(argv):
-            period = argv[i + 1]; i += 2; continue
-        if a == "--date" and i + 1 < len(argv):
-            target = datetime.strptime(argv[i + 1], "%Y-%m-%d").date(); i += 2; continue
-        if a == "--all":
-            do_all = True; i += 1; continue
-        i += 1
-    if period not in ("week", "month"):
-        raise SystemExit(f"--period deve essere 'week' o 'month', ricevuto: {period}")
-    return period, target, do_all
+    p = argparse.ArgumentParser(
+        prog="meetwiki-digest",
+        description="Genera digest periodici delle riunioni (settimanali/mensili).",
+    )
+    p.add_argument("--period", choices=("week", "month"), default="week",
+                   help="granularita' del digest (default: week)")
+    p.add_argument("--date", dest="date_s", default=None,
+                   help="data target YYYY-MM-DD (default: oggi)")
+    p.add_argument("--all", dest="do_all", action="store_true",
+                   help="rigenera tutti i digest storici per il periodo scelto")
+    a = p.parse_args(argv)
+    target: date | None = None
+    if a.date_s is not None:
+        try:
+            target = date.fromisoformat(a.date_s)
+        except ValueError:
+            p.error(f"--date deve essere in formato YYYY-MM-DD, ricevuto: {a.date_s!r}")
+    return a.period, target, a.do_all
 
 
 def main(argv: list[str] | None = None) -> int:

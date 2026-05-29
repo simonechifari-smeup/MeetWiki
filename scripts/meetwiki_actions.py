@@ -16,7 +16,6 @@ import hashlib
 import json
 import re
 import sys
-import unicodedata
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -29,7 +28,14 @@ BY_OWNER_DIR = ACTIONS_DIR / "by-owner"
 STATUS_FILE = WIKI / ".meta" / "actions_status.json"
 GLOBAL_FILE = WIKI / "ACTIONS.md"
 
-FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)", re.DOTALL)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from meetwiki_common import (  # noqa: E402
+    safe_load_json,
+    parse_frontmatter,
+    extract_section,
+    slugify as _common_slugify,
+)
+
 # `- [ ] [Owner] task...`  oppure  `- [ ] \[Owner\] task...`  oppure  `- [ ] Owner: task...`
 ACTION_CHECK_RE = re.compile(r"^- \[([ xX])\]\s*(.+)$")
 ACTION_OWNER_BRACKET_RE = re.compile(r"^\\?\[([^\]\\]+?)\\?\]\s*[:\-]?\s+(.+)$")
@@ -55,38 +61,7 @@ def split_owners(owner: str) -> list[str]:
 
 
 def slugify(text: str) -> str:
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    text = text.lower()
-    return re.sub(r"[^a-z0-9]+", "-", text).strip("-") or "anonimo"
-
-
-def parse_frontmatter(text: str) -> tuple[dict, str]:
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return {}, text
-    fm: dict = {}
-    list_key = None
-    for line in m.group(1).splitlines():
-        if line.startswith("  - ") and list_key:
-            fm.setdefault(list_key, []).append(line[4:].strip().strip('"'))
-            continue
-        if ":" in line:
-            k, _, v = line.partition(":")
-            k = k.strip(); v = v.strip()
-            if v == "":
-                fm[k] = []; list_key = k
-            elif v == "[]":
-                fm[k] = []; list_key = None
-            else:
-                fm[k] = v.strip('"'); list_key = None
-    return fm, m.group(2)
-
-
-def extract_section(body: str, heading: str) -> str:
-    pat = re.compile(rf"^##\s+{re.escape(heading)}\s*\n(.*?)(?=^##\s+|\Z)",
-                     re.MULTILINE | re.DOTALL)
-    m = pat.search(body)
-    return m.group(1).strip() if m else ""
+    return _common_slugify(text, fallback="anonimo")
 
 
 def action_hash(owner: str, task: str, note_id: str) -> str:
@@ -96,9 +71,7 @@ def action_hash(owner: str, task: str, note_id: str) -> str:
 
 
 def load_status() -> dict:
-    if STATUS_FILE.exists():
-        return json.loads(STATUS_FILE.read_text(encoding="utf-8"))
-    return {}
+    return safe_load_json(STATUS_FILE, {})
 
 
 def collect_actions() -> list[dict]:

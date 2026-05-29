@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import re
 import sys
-import unicodedata
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -20,39 +19,21 @@ PEOPLE = WIKI / "people"
 
 MIN_NOTES = 2  # soglia minima per generare la pagina aggregata
 
-FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)", re.DOTALL)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from meetwiki_common import (  # noqa: E402
+    parse_frontmatter as _common_parse_frontmatter,
+    slugify as _common_slugify,
+    extract_section,
+)
 
 
 def slugify(text: str) -> str:
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    text = text.lower()
-    return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    return _common_slugify(text)
 
 
 def parse_note(path: Path) -> dict | None:
     text = path.read_text(encoding="utf-8")
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return None
-    fm_text, body = m.group(1), m.group(2)
-    fm: dict = {}
-    list_key = None
-    for line in fm_text.splitlines():
-        if line.startswith("  - ") and list_key:
-            fm.setdefault(list_key, []).append(line[4:].strip().strip('"'))
-            continue
-        if ":" in line:
-            k, _, v = line.partition(":")
-            k = k.strip(); v = v.strip()
-            if v == "":
-                fm[k] = []
-                list_key = k
-            elif v == "[]":
-                fm[k] = []
-                list_key = None
-            else:
-                fm[k] = v.strip('"')
-                list_key = None
+    fm, body = _common_parse_frontmatter(text)
     if not fm.get("id"):
         return None
     rel = path.relative_to(NOTES).as_posix()
@@ -60,13 +41,6 @@ def parse_note(path: Path) -> dict | None:
     fm["_path_people"] = f"../notes/{rel}"
     fm["_body"] = body
     return fm
-
-
-def extract_section(body: str, heading: str) -> str:
-    pat = re.compile(rf"^##\s+{re.escape(heading)}\s*\n(.*?)(?=^##\s+|\Z)",
-                     re.MULTILINE | re.DOTALL)
-    m = pat.search(body)
-    return m.group(1).strip() if m else ""
 
 
 def get_summary(fm: dict) -> str:

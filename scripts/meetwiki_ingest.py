@@ -6,11 +6,12 @@ Conforme alla skill .github/skills/meetwiki-ingest/SKILL.md.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
+import logging
 import re
 import sys
-import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -20,6 +21,17 @@ WIKI_DIR = ROOT / "MeetWiki"
 NOTES_DIR = WIKI_DIR / "notes"
 HISTORY_DIR = NOTES_DIR / "_history"
 MANIFEST = WIKI_DIR / ".meta" / "manifest.json"
+
+log = logging.getLogger("meetwiki.ingest")
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from meetwiki_common import (  # noqa: E402
+    atomic_write_json,
+    safe_load_json,
+    slugify as _common_slugify,
+    extract_section as _common_extract_section,
+)
+
 
 FILENAME_DATE_RE = re.compile(r"(\d{4})_(\d{2})_(\d{2})")
 FILENAME_TIME_RE = re.compile(r"\d{4}_\d{2}_\d{2}\s+(\d{2})_(\d{2})")
@@ -108,24 +120,38 @@ def select_canonical(files: list[Path]) -> tuple[list[Path], dict[Path, Path]]:
 
 def _archive_source(src: Path, meeting_date: str) -> Path:
     """Sposta `src` in note_riunioni/archive/YYYY-MM/ se non gia' li'.
-    Restituisce il path finale (post-move se avvenuto, src altrimenti)."""
+
+    In caso di collisione di nome:
+    - se il file gia' archiviato ha lo stesso hash -> scarta `src` (identici).
+    - altrimenti rinomina `src` con suffisso `-2`, `-3`, ... (F07).
+    Restituisce il path finale (post-move se avvenuto, src altrimenti).
+    """
     archive_dir = SOURCE_DIR / "archive" / meeting_date[:7]
     if src.parent == archive_dir:
         return src
     archive_dir.mkdir(parents=True, exist_ok=True)
     dest = archive_dir / src.name
     if dest.exists():
-        # Collisione: stesso nome gia' archiviato. Tieni il piu' recente.
-        dest.unlink()
+        if sha256_file(dest) == sha256_file(src):
+            # Identici: scarta il duplicato in inbox.
+            src.unlink()
+            return dest
+        # Contenuti diversi: salva con suffisso numerico, non sovrascrivere.
+        n = 2
+        while True:
+            candidate = dest.with_stem(f"{dest.stem}-{n}")
+            if not candidate.exists():
+                dest = candidate
+                break
+            n += 1
+        print(f"  [ARCHIVE-COLLISION] {src.name} differisce da quello gia' archiviato, salvo come {dest.name}")
     src.rename(dest)
     return dest
 
 
 def slugify(text: str, maxlen: int = 60) -> str:
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    text = text.lower()
-    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
-    return text[:maxlen].rstrip("-")
+    return _common_slugify(text, maxlen=maxlen)
+
 
 
 def sha256_file(path: Path) -> str:
@@ -136,16 +162,21 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def parse_filename(name: str) -> tuple[str, str, str]:
-    """Restituisce (meeting_date YYYY-MM-DD, title, lang_suffix)."""
+def parse_filename(name: str) -> tuple[str | None, str, str]:
+    """Restituisce (meeting_date YYYY-MM-DD | None, title, lang_suffix).
+
+    `meeting_date` e' None se il filename non contiene un timestamp riconoscibile:
+    in quel caso il caller deve loggare un warning e saltare il file (F06).
+    """
     stem = name[:-3] if name.endswith(".md") else name
     # Data riunione dal timestamp embedded
     m = FILENAME_DATE_RE.search(stem)
     if m:
-        meeting_date = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+        meeting_date: str | None = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    elif re.match(r"\d{4}-\d{2}-\d{2}", stem):
+        meeting_date = stem[:10]
     else:
-        meeting_date = stem[:10] if re.match(r"\d{4}-\d{2}-\d{2}", stem) else \
-            datetime.now().strftime("%Y-%m-%d")
+        meeting_date = None
 
     # Rimuovi prefisso "YYYY-MM-DD - "
     rest = re.sub(r"^\d{4}-\d{2}-\d{2}\s*-\s*", "", stem)
@@ -172,6 +203,7 @@ def extract_participants(text: str) -> list[str]:
         name = m.group(1).strip()
         # Skip mailing list / generic
         if "@" in name or name.lower().startswith(("ics ", "team ", "lista")):
+            log.debug("Skip partecipante non-persona: %r", name)
             continue
         key = name.lower()
         if key not in seen:
@@ -182,12 +214,8 @@ def extract_participants(text: str) -> list[str]:
 
 def extract_section(text: str, heading: str) -> str:
     """Estrae il contenuto della sezione `### heading` fino al prossimo `### `."""
-    pattern = re.compile(
-        rf"^###\s+{re.escape(heading)}\s*\n(.*?)(?=^###\s+|\Z)",
-        re.MULTILINE | re.DOTALL,
-    )
-    m = pattern.search(text)
-    return m.group(1).strip() if m else ""
+    return _common_extract_section(text, heading, level=3)
+
 
 
 def extract_action_items(text: str) -> list[str]:
@@ -279,44 +307,75 @@ def build_note(
 
 
 def load_manifest() -> dict:
-    if MANIFEST.exists():
-        return json.loads(MANIFEST.read_text(encoding="utf-8"))
-    return {"version": 1, "ingested": {}}
+    return safe_load_json(MANIFEST, {"version": 1, "ingested": {}})
 
 
 def save_manifest(data: dict) -> None:
-    MANIFEST.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(MANIFEST, data)
 
 
 def main() -> int:
-    force = "--force" in sys.argv
-    NOTES_DIR.mkdir(parents=True, exist_ok=True)
-    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    p = argparse.ArgumentParser(
+        prog="meetwiki-ingest",
+        description="Importa file .md da note_riunioni/ nella wiki strutturata MeetWiki/notes/.",
+    )
+    p.add_argument("--force", action="store_true",
+                   help="re-ingest di tutti i file, ignorando hash in manifest")
+    p.add_argument("--dry-run", action="store_true",
+                   help="mostra cosa verrebbe ingerito/archiviato senza scrivere nulla")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="abilita log DEBUG (es. partecipanti scartati)")
+    args = p.parse_args()
+    force = args.force
+    dry_run = args.dry_run
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.WARNING,
+        format="%(levelname)s %(name)s: %(message)s",
+    )
+
+    prefix = "[DRY-RUN] " if dry_run else ""
+    if not dry_run:
+        NOTES_DIR.mkdir(parents=True, exist_ok=True)
+        HISTORY_DIR.mkdir(parents=True, exist_ok=True)
     manifest = load_manifest()
     ingested_map: dict = manifest.setdefault("ingested", {})
 
     files = sorted(SOURCE_DIR.rglob("*.md"))
-    print(f"Trovati {len(files)} file in {SOURCE_DIR.name}/ (inclusa archive/)"
+    print(f"{prefix}Trovati {len(files)} file in {SOURCE_DIR.name}/ (inclusa archive/)"
           + (" (FORCE)" if force else ""))
 
     # Pre-pass 1: dedup varianti lingua (stesso timestamp+titolo)
     files, dup_map = select_canonical(files)
     for dup_path, target_path in dup_map.items():
-        print(f"  [DUP-LANG] {dup_path.name} -> stesso meeting di {target_path.name}, salto")
+        print(f"  {prefix}[DUP-LANG] {dup_path.name} -> stesso meeting di {target_path.name}, salto")
         ingested_map[dup_path.name] = {
             "dup_of": target_path.name,
             "ingested_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         }
         # Archivia anche il duplicato (stesso month del canonical)
         meeting_date, _, _ = parse_filename(target_path.name)
-        _archive_source(dup_path, meeting_date)
+        if meeting_date is None:
+            print(f"  [SKIP] {target_path.name}: filename senza data riconoscibile (YYYY_MM_DD o YYYY-MM-DD)")
+            continue
+        if not dry_run:
+            _archive_source(dup_path, meeting_date)
 
     # Pre-pass 2: rileva collisioni di note_id (stesso date+slug ma timestamp diversi)
     base_ids: dict[str, list[str]] = {}
+    skipped_undated: list[str] = []
+    valid_files: list[Path] = []
     for src in files:
         meeting_date, title, _ = parse_filename(src.name)
+        if meeting_date is None:
+            skipped_undated.append(src.name)
+            continue
+        valid_files.append(src)
         base_id = f"{meeting_date}-{slugify(title)}"
         base_ids.setdefault(base_id, []).append(src.name)
+    for n in skipped_undated:
+        print(f"  [SKIP] {n}: filename senza data riconoscibile, ignorato (rinomina con prefisso YYYY-MM-DD o timestamp YYYY_MM_DD)")
+    files = valid_files
     needs_time_suffix = {n for names in base_ids.values() if len(names) > 1 for n in names}
 
     new_count = updated_count = skipped_count = 0
@@ -337,7 +396,8 @@ def main() -> int:
                 slug = f"{slug}-{tm.group(1)}{tm.group(2)}"
         note_id = f"{meeting_date}-{slug}"[:80].rstrip("-")
         month_dir = NOTES_DIR / meeting_date[:7]  # YYYY-MM
-        month_dir.mkdir(parents=True, exist_ok=True)
+        if not dry_run:
+            month_dir.mkdir(parents=True, exist_ok=True)
         out_path = month_dir / f"{note_id}.md"
 
         raw = src.read_text(encoding="utf-8", errors="replace")
@@ -354,9 +414,10 @@ def main() -> int:
         if prev and out_path.exists():
             old_hash = prev.get("hash", "unknown")[:8]
             hist_dir = HISTORY_DIR / meeting_date[:7]
-            hist_dir.mkdir(parents=True, exist_ok=True)
-            archive = hist_dir / f"{note_id}-{old_hash}.md"
-            archive.write_text(out_path.read_text(encoding="utf-8"), encoding="utf-8")
+            if not dry_run:
+                hist_dir.mkdir(parents=True, exist_ok=True)
+                archive = hist_dir / f"{note_id}-{old_hash}.md"
+                archive.write_text(out_path.read_text(encoding="utf-8"), encoding="utf-8")
 
         content = build_note(
             note_id=note_id, title=title, date=meeting_date,
@@ -365,7 +426,8 @@ def main() -> int:
             participants=participants, tags=tags, related_docs=docs,
             summary=summary, topics=topics, actions=actions, raw=raw,
         )
-        out_path.write_text(content, encoding="utf-8")
+        if not dry_run:
+            out_path.write_text(content, encoding="utf-8")
 
         if prev:
             updated_count += 1
@@ -373,10 +435,13 @@ def main() -> int:
         else:
             new_count += 1
             status = "NUOVA"
-        print(f"  [{status}] {src.name} -> {out_path.name}")
+        print(f"  {prefix}[{status}] {src.name} -> {out_path.name}")
 
         # Archivia il sorgente in note_riunioni/archive/YYYY-MM/ se non gia' li'
-        archived = _archive_source(src, meeting_date)
+        if dry_run:
+            archived = src
+        else:
+            archived = _archive_source(src, meeting_date)
         source_rel_final = f"note_riunioni/{archived.relative_to(SOURCE_DIR).as_posix()}"
         # Riscrivi la nota con il source path aggiornato (post-archive) se cambiato
         if archived != src:
@@ -396,9 +461,10 @@ def main() -> int:
             "ingested_at": now_iso,
         }
 
-    save_manifest(manifest)
+    if not dry_run:
+        save_manifest(manifest)
     print(
-        f"\nIngest completato: {new_count} nuove, {updated_count} aggiornate, "
+        f"\n{prefix}Ingest completato: {new_count} nuove, {updated_count} aggiornate, "
         f"{skipped_count} saltate (gia aggiornate)."
     )
     return 0

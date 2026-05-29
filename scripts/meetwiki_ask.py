@@ -19,6 +19,7 @@ Conforme alla skill .github/skills/meetwiki-ask/SKILL.md.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import math
 import re
@@ -33,7 +34,13 @@ WIKI = ROOT / "MeetWiki"
 NOTES = WIKI / "notes"
 INDEX_FILE = WIKI / ".meta" / "search_index.json"
 
-FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)", re.DOTALL)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from meetwiki_common import (  # noqa: E402
+    atomic_write_json,
+    safe_load_json,
+    parse_frontmatter,
+)
+
 SECTION_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 TOKEN_RE = re.compile(r"[a-z0-9àèéìòù]{2,}")
 
@@ -66,28 +73,6 @@ def tokenize(text: str) -> list[str]:
     t = t.encode("ascii", "ignore").decode("ascii")  # rimuove accenti per matching robusto
     t = t.lower()
     return [w for w in TOKEN_RE.findall(t) if w not in STOPWORDS and len(w) > 1]
-
-
-def parse_frontmatter(text: str) -> tuple[dict, str]:
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return {}, text
-    fm: dict = {}
-    list_key = None
-    for line in m.group(1).splitlines():
-        if line.startswith("  - ") and list_key:
-            fm.setdefault(list_key, []).append(line[4:].strip().strip('"'))
-            continue
-        if ":" in line:
-            k, _, v = line.partition(":")
-            k = k.strip(); v = v.strip()
-            if v == "":
-                fm[k] = []; list_key = k
-            elif v == "[]":
-                fm[k] = []; list_key = None
-            else:
-                fm[k] = v.strip('"'); list_key = None
-    return fm, m.group(2)
 
 
 def split_sections(body: str) -> list[tuple[str, str]]:
@@ -190,14 +175,13 @@ def build_index() -> dict:
 
 
 def save_index(idx: dict) -> None:
-    INDEX_FILE.parent.mkdir(parents=True, exist_ok=True)
-    INDEX_FILE.write_text(json.dumps(idx, ensure_ascii=False), encoding="utf-8")
+    atomic_write_json(INDEX_FILE, idx, indent=None)
 
 
 def load_index() -> dict | None:
     if not INDEX_FILE.exists():
         return None
-    return json.loads(INDEX_FILE.read_text(encoding="utf-8"))
+    return safe_load_json(INDEX_FILE, None)
 
 
 def bm25_score(query_terms: list[str], doc: dict, df: dict,
@@ -263,27 +247,29 @@ def render_results(query: str, results: list[dict]) -> str:
 
 
 def parse_args(argv: list[str]) -> dict:
-    args: dict = {"action": "search", "k": 5, "tag": None,
-                  "since": None, "until": None, "person": None, "query": ""}
-    i = 0
-    parts = []
-    while i < len(argv):
-        a = argv[i]
-        if a == "--index":
-            args["action"] = "index"; i += 1; continue
-        if a in ("-k", "--top") and i + 1 < len(argv):
-            args["k"] = int(argv[i + 1]); i += 2; continue
-        if a == "--tag" and i + 1 < len(argv):
-            args["tag"] = argv[i + 1]; i += 2; continue
-        if a == "--since" and i + 1 < len(argv):
-            args["since"] = argv[i + 1]; i += 2; continue
-        if a == "--until" and i + 1 < len(argv):
-            args["until"] = argv[i + 1]; i += 2; continue
-        if a == "--person" and i + 1 < len(argv):
-            args["person"] = argv[i + 1]; i += 2; continue
-        parts.append(a); i += 1
-    args["query"] = " ".join(parts).strip()
-    return args
+    p = argparse.ArgumentParser(
+        prog="meetwiki-ask",
+        description="Ricerca BM25 + retrieval di passaggi sulle note MeetWiki.",
+    )
+    p.add_argument("--index", dest="do_index", action="store_true",
+                   help="(re)build dell'indice BM25")
+    p.add_argument("-k", "--top", type=int, default=5,
+                   help="numero di passaggi da restituire (default: 5)")
+    p.add_argument("--tag", default=None, help="filtra per tag")
+    p.add_argument("--since", default=None, help="data minima YYYY-MM-DD")
+    p.add_argument("--until", default=None, help="data massima YYYY-MM-DD")
+    p.add_argument("--person", default=None, help="filtra per partecipante")
+    p.add_argument("query", nargs="*", help="query in linguaggio naturale")
+    a = p.parse_args(argv)
+    return {
+        "action": "index" if a.do_index else "search",
+        "k": a.top,
+        "tag": a.tag,
+        "since": a.since,
+        "until": a.until,
+        "person": a.person,
+        "query": " ".join(a.query).strip(),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

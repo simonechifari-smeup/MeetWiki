@@ -4,7 +4,6 @@ Conforme alla skill .github/skills/meetwiki-index/SKILL.md.
 """
 from __future__ import annotations
 
-import re
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -14,40 +13,17 @@ ROOT = Path(__file__).resolve().parent.parent
 WIKI = ROOT / "MeetWiki"
 NOTES = WIKI / "notes"
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from meetwiki_common import parse_frontmatter as _common_parse_frontmatter  # noqa: E402
+
 MONTHS_IT = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
              "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
-FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
-
 
 def parse_frontmatter(text: str) -> dict:
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return {}
-    data: dict = {}
-    list_key: str | None = None
-    for line in m.group(1).splitlines():
-        if not line.strip():
-            continue
-        if line.startswith("  - ") and list_key:
-            val = line[4:].strip().strip('"')
-            data.setdefault(list_key, []).append(val)
-            continue
-        if ":" in line:
-            key, _, value = line.partition(":")
-            key = key.strip()
-            value = value.strip()
-            if value == "":
-                # Chiave con lista che segue
-                data[key] = []
-                list_key = key
-            elif value == "[]":
-                data[key] = []
-                list_key = None
-            else:
-                data[key] = value.strip('"')
-                list_key = None
-    return data
+    fm, _ = _common_parse_frontmatter(text)
+    return fm
+
 
 
 def load_notes() -> list[dict]:

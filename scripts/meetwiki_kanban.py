@@ -24,6 +24,7 @@ Conforme alla skill .github/skills/meetwiki-kanban/SKILL.md.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -42,8 +43,10 @@ STATUS_FILE = WIKI / ".meta" / "actions_status.json"
 ENV_FILE = ROOT / ".env"
 
 # Riusa il parser/estrattore di meetwiki_actions.py per non duplicare logica.
-sys.path.insert(0, str(ROOT / "scripts"))
-from meetwiki_actions import collect_actions, slugify  # noqa: E402
+# `scripts/` e' gia' in sys.path[0] perche' lo script e' lanciato da li'.
+from meetwiki_actions import collect_actions, slugify
+from meetwiki_common import atomic_write_json, safe_load_json
+
 
 COLUMNS = ["Open", "In Progress", "Blocked", "Done"]
 STATUS_TO_COL = {"open": "Open", "in_progress": "In Progress",
@@ -230,18 +233,11 @@ def parse_board(path: Path) -> dict[str, str]:
 
 
 def load_status() -> dict:
-    if STATUS_FILE.exists():
-        try:
-            return json.loads(STATUS_FILE.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return {}
-    return {}
+    return safe_load_json(STATUS_FILE, {})
 
 
 def save_status(data: dict) -> None:
-    STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATUS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2),
-                           encoding="utf-8")
+    atomic_write_json(STATUS_FILE, data)
 
 
 def sync_boards(items_by_hash: dict[str, dict]) -> tuple[int, int]:
@@ -286,9 +282,17 @@ def sync_boards(items_by_hash: dict[str, dict]) -> tuple[int, int]:
 # --- Main ---
 
 def main() -> int:
-    do_sync = "--sync" in sys.argv
-    do_export = "--export" in sys.argv
-    me_only = "--me-only" in sys.argv
+    p = argparse.ArgumentParser(
+        prog="meetwiki-kanban",
+        description="Board Obsidian Kanban per action items, con sync bidirezionale.",
+    )
+    p.add_argument("--sync", action="store_true", help="legge le board e aggiorna actions_status.json")
+    p.add_argument("--export", action="store_true", help="rigenera le board dallo stato")
+    p.add_argument("--me-only", action="store_true", help="genera solo MY-KANBAN.md")
+    a = p.parse_args()
+    do_sync = a.sync
+    do_export = a.export
+    me_only = a.me_only
     if not do_sync and not do_export:
         # default: sync + export (pipeline-safe)
         do_sync = True
