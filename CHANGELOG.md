@@ -6,7 +6,7 @@ e il progetto aderisce a [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
-## [0.1.0] - 2026
+## [0.1.0] - 2026-05-29
 
 Prima versione coerente con review interna completata (vedi `docs/REVIEW_REPORT.md`).
 

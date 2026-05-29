@@ -148,6 +148,36 @@ Pipeline: `meetwiki_update.py` esegue `kanban --sync` PRIMA e `kanban --export`
 DOPO, quindi i drag&drop fatti in Obsidian persistono attraverso gli update.
 Le colonne riconosciute sono: `Open` | `In Progress` | `Blocked` | `Done`.
 
+## Procedura di rilascio
+
+Quando l'utente chiede di fare un rilascio ("fai release", "bump versione", "rilascia X.Y.Z"):
+
+1. **Determina la versione** (SemVer: `MAJOR.MINOR.PATCH`).
+   - PATCH → solo bug fix.
+   - MINOR → nuove feature retrocompatibili.
+   - MAJOR → breaking change.
+
+2. **Aggiorna `pyproject.toml`**:
+   ```toml
+   version = "X.Y.Z"
+   ```
+
+3. **Aggiorna `CHANGELOG.md`**:
+   - Rinomina `## [Unreleased]` → `## [X.Y.Z] - YYYY-MM-DD`.
+   - Aggiungi una nuova sezione `## [Unreleased]` vuota in cima (dopo il titolo).
+
+4. **Commit e tag**:
+   ```powershell
+   git add pyproject.toml CHANGELOG.md
+   git commit -m "chore(release): bump version to X.Y.Z"
+   git tag vX.Y.Z
+   ```
+
+5. **Source of truth versione**: `pyproject.toml` → campo `version`.
+   Il tag git `vX.Y.Z` identifica il commit di rilascio.
+
+> NON eseguire `git push` o `git push --tags` senza conferma esplicita dell'utente.
+
 ## Operazioni distruttive
 
 Chiedere SEMPRE conferma prima di:
