@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Cache / runtime
+.cache/
+*.log
+downloader.log
+
+# Browser profile (contiene cookie/sessione Google)
+chrome_profile/
+
+# Secret / config locale
+.env
+
+# Inbox e archivio sorgenti note (dati personali)
+note_riunioni/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+MeetWiki
