@@ -40,6 +40,16 @@ run.bat
 
 ---
 
+## 🖥️ Menu interattivo
+
+Lancia `menu.cmd` dalla root per accedere a tutte le funzioni con un solo tasto:
+
+<p align="center">
+  <img src="docs/menu-preview.svg?v=2" alt="Menu MeetWiki" width="580"/>
+</p>
+
+---
+
 ## ✨ Funzionalità principali
 
 - **📥 Sincronizzazione Gmail** — Importa automaticamente le note di riunione da Gemini
@@ -124,3 +134,5 @@ scripts/
 ├── meetwiki_ask.py         # Ricerca semantica (BM25)
 └── ...
 ```
+
+

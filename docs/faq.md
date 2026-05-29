@@ -88,9 +88,9 @@ Nota: `.meta/actions_status.json` (override manuali) NON viene cancellato.
 
 ---
 
-### Posso usare il progetto su macOS/Linux?
+### Posso usare il progetto su Linux?
 
-Il downloader (`gemini_notes_downloader.py`) è specifico per Windows (percorsi Chrome, task scheduler). La pipeline wiki (`meetwiki_*.py`) è portabile ma non testata su altri OS.
+Il downloader (`gemini_notes_downloader.py`) è specifico per Windows (percorsi Chrome, task scheduler). La pipeline wiki (`meetwiki_*.py`) è portabile ma non testata su Linux.
 
 ---
 

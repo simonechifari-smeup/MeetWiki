@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="420" font-family="Consolas, monospace" font-size="14">
+  <rect width="580" height="420" rx="8" fill="#1e1e1e"/>
+  <!-- Title bar with top corners rounded to match outer frame -->
+  <rect x="0" y="0" width="580" height="30" rx="8" fill="#2d2d2d"/>
+  <!-- Cover bottom rounded corners of title bar -->
+  <rect x="0" y="22" width="580" height="8" fill="#2d2d2d"/>
+  <text x="290" y="20" fill="#888888" font-size="12" text-anchor="middle">MeetWiki</text>
+  <rect x="530" y="8" width="14" height="14" fill="none" stroke="#888888" stroke-width="1" rx="0"/>
+  <line x1="556" y1="8" x2="570" y2="22" stroke="#888888" stroke-width="1.5"/>
+  <line x1="570" y1="8" x2="556" y2="22" stroke="#888888" stroke-width="1.5"/>
+  <!-- Banner -->
+  <text x="20" y="55" fill="#56b6c2">========================================================</text>
+  <text x="20" y="80" fill="#ffffff" font-weight="bold">   M e e t W i k i</text>
+  <text x="20" y="100" fill="#888888">               ...from Gemini Notes</text>
+  <text x="20" y="125" fill="#56b6c2">========================================================</text>
+  <!-- Label -->
+  <text x="20" y="155" fill="#cccccc">  Scegli un'opzione:</text>
+  <!-- Download & Update (green) -->
+  <text x="20" y="180" fill="#98c379">    [1]<tspan fill="#cccccc">  Scarica note da Gmail</tspan></text>
+  <text x="20" y="198" fill="#98c379">    [2]<tspan fill="#cccccc">  Aggiorna wiki (pipeline)</tspan></text>
+  <text x="20" y="216" fill="#98c379">    [3]<tspan fill="#cccccc">  Aggiorna wiki (force)</tspan></text>
+  <!-- Search & Analysis (cyan) -->
+  <text x="20" y="242" fill="#56b6c2">    [4]<tspan fill="#cccccc">  Ricerca semantica (ask)</tspan></text>
+  <text x="20" y="260" fill="#56b6c2">    [5]<tspan fill="#cccccc">  Action items</tspan></text>
+  <text x="20" y="278" fill="#56b6c2">    [6]<tspan fill="#cccccc">  Kanban (sync + export)</tspan></text>
+  <!-- Reports (yellow) -->
+  <text x="20" y="304" fill="#e5c07b">    [7]<tspan fill="#cccccc">  Digest settimanale</tspan></text>
+  <text x="20" y="322" fill="#e5c07b">    [8]<tspan fill="#cccccc">  Digest mensile</tspan></text>
+  <!-- Setup & Quit (red) -->
+  <text x="20" y="348" fill="#e06c75">    [S]<tspan fill="#cccccc">  Setup...</tspan></text>
+  <text x="20" y="374" fill="#e06c75">    [Q]<tspan fill="#cccccc">  Esci</tspan></text>
+  <!-- Prompt -->
+  <text x="20" y="404" fill="#ffffff" font-weight="bold">  ›</text>
+</svg>

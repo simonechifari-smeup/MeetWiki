@@ -13,6 +13,7 @@ Lo script chiude Chrome se aperto, fa il lavoro, poi lo riapre.
 import os
 import re
 import json
+import hashlib
 import shutil
 import logging
 import subprocess
@@ -314,12 +315,17 @@ def get_email_items(page, processed: set) -> list:
     n = len(email_data)
     for i, meta in enumerate(email_data):
         thread_id = meta.get("thread_id") or ""
-        email_id = thread_id or f"row-{i}"
         subject = meta.get("subject", f"email-{i}")
         date_str = meta.get("date", "")
 
+        # Usa un hash stabile di subject+date (gli ID DOM di Gmail cambiano a ogni sessione)
+        if subject and date_str:
+            email_id = hashlib.sha256(f"{subject}|{date_str}".encode()).hexdigest()[:12]
+        else:
+            email_id = thread_id or f"row-{i}"
+
         if email_id in processed:
-            log.debug("Email %d/%d gia processata, salto.", i + 1, n)
+            log.debug("Email %d/%d gia processata (pre-check), salto.", i + 1, n)
             continue
 
         log.info("Apro email %d/%d: %s", i + 1, n, subject[:80])
@@ -333,6 +339,19 @@ def get_email_items(page, processed: set) -> list:
 
             page.wait_for_selector(".a3s, .ii.gt", timeout=15_000)
             page.wait_for_timeout(400)
+
+            # Cattura l'ID thread stabile dall'URL (es. #search/.../FMfcgzQXJ...)
+            current_url = page.url
+            url_thread_match = re.search(r'[/#](FM[a-zA-Z0-9]+)', current_url)
+            if url_thread_match:
+                email_id = url_thread_match.group(1)
+                if email_id in processed:
+                    log.info("  -> Gia processata (URL id: %s), salto.", email_id)
+                    # Torna alla lista
+                    page.go_back(wait_until="domcontentloaded", timeout=15_000)
+                    page.wait_for_selector("div[role='main'] tr.zA:visible", timeout=15_000)
+                    page.wait_for_timeout(500)
+                    continue
 
             hrefs = page.locator(".a3s a[href], .ii.gt a[href]").evaluate_all(
                 "els => els.map(e => e.href)"
@@ -516,6 +535,12 @@ def run() -> None:
                 log.info("Nessuna nuova email da processare.")
                 save_processed(processed)
             else:
+                # Raccogli nomi file gia presenti (inbox + archive) per dedup aggiuntiva
+                existing_files = {f.stem for f in OUTPUT_DIR.glob("*.md")}
+                archive_dir = OUTPUT_DIR / "archive"
+                if archive_dir.exists():
+                    existing_files |= {f.stem for f in archive_dir.rglob("*.md")}
+
                 with tempfile.TemporaryDirectory() as tmpdir:
                     tmp_path = Path(tmpdir)
 
@@ -528,11 +553,16 @@ def run() -> None:
                             title = get_doc_title(page, doc_id)
                             log.info("  Titolo: %s", title)
 
+                            base_name = sanitize_filename(f"{date_prefix} - {title}")
+                            # Skip se file gia presente
+                            if base_name in existing_files:
+                                log.info("  -> Gia scaricato: %s, salto.", base_name)
+                                continue
+
                             downloaded = download_doc_as_markdown(page, doc_id, tmp_path)
                             if not downloaded:
                                 continue
 
-                            base_name = sanitize_filename(f"{date_prefix} - {title}")
                             dest = OUTPUT_DIR / (base_name + ".md")
                             counter = 1
                             while dest.exists():
