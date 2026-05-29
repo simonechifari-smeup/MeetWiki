@@ -4,7 +4,6 @@ Esegui con: `.\\.venv\\Scripts\\python.exe -m pytest -q`
 """
 from __future__ import annotations
 
-import json
 import sys
 from datetime import date
 from pathlib import Path
@@ -12,12 +11,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import meetwiki_common as common
-import meetwiki_ingest as ingest
-import meetwiki_actions as actions
-import meetwiki_ask as ask
-import meetwiki_digest as digest
-
+import meetwiki_actions as actions  # noqa: E402
+import meetwiki_ask as ask  # noqa: E402
+import meetwiki_common as common  # noqa: E402
+import meetwiki_digest as digest  # noqa: E402
+import meetwiki_ingest as ingest  # noqa: E402
 
 # ---- meetwiki_common ----
 
