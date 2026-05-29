@@ -1,5 +1,12 @@
 # 📚 MeetWiki (From Gemini Notes)
 
+[![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Playwright](https://img.shields.io/badge/Playwright-1.44-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
+[![Obsidian](https://img.shields.io/badge/Obsidian-Vault-7C3AED?logo=obsidian&logoColor=white)](https://obsidian.md/)
+[![Kanban](https://img.shields.io/badge/Kanban-Board-FF6B6B?logo=trello&logoColor=white)](https://github.com/mgmeyers/obsidian-kanban)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)](#)
+
 > Trasforma le note di riunione da Gemini in una **wiki strutturata e intelligente**, pronta per ricerca semantica e integrazione con AI.
 
 Importa automaticamente le riunioni da Gmail, le organizza in una knowledge base interconnessa e offre ricerca semantica, action tracking e Kanban personali—il tutto integrato in Obsidian.
