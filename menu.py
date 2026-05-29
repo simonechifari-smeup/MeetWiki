@@ -1,12 +1,11 @@
 """
 MeetWiki — Menu interattivo
 """
-import os
-import sys
-import subprocess
-import socket
-import time
 import msvcrt
+import os
+import socket
+import subprocess
+import time
 
 
 def getch():
@@ -115,15 +114,25 @@ def run_bat(bat_name):
 
 
 def handle_download():
-    # Controlla se Chrome è già aperto con la porta di debug
+    # Controlla se Chrome è già aperto sulla porta debug del downloader.
+    # NOTA: il downloader usa un profilo dedicato (`scripts/chrome_profile/`)
+    # e una porta dedicata, quindi può convivere con il Chrome dell'utente.
     try:
-        with socket.create_connection(("localhost", 9222), timeout=1):
+        with socket.create_connection(("127.0.0.1", 9222), timeout=1):
             pass
     except OSError:
-        print(f"  {DIM}Avvio Chrome con porta debug remoto...{RESET}")
+        print(f"  {DIM}Avvio Chrome (profilo downloader) con debug port 9222...{RESET}")
         chrome = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-        subprocess.Popen([chrome, "--remote-debugging-port=9222",
-                          "--no-first-run", "--no-default-browser-check"])
+        profile_dir = os.path.join(SCRIPTS, "chrome_profile")
+        subprocess.Popen([
+            chrome,
+            "--remote-debugging-port=9222",
+            "--remote-debugging-address=127.0.0.1",
+            f"--user-data-dir={profile_dir}",
+            "--profile-directory=Default",
+            "--no-first-run",
+            "--no-default-browser-check",
+        ])
         time.sleep(3)
 
     rc = run_script("gemini_notes_downloader.py")
