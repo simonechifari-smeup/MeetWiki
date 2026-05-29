@@ -54,7 +54,14 @@ run.bat
 
 ## 📖 Come cominciare
 
-### Documentazione principale
+### Documentazione completa
+- **[docs/](docs/README.md)** — Guida completa: setup, utilizzo, architettura e FAQ
+- **[docs/setup.md](docs/setup.md)** — Installazione e configurazione
+- **[docs/usage.md](docs/usage.md)** — Comandi e workflow quotidiano
+- **[docs/architecture.md](docs/architecture.md)** — Diagrammi e scelte progettuali
+- **[docs/faq.md](docs/faq.md)** — Troubleshooting e domande frequenti
+
+### Riferimenti interni
 - **[AGENTS.md](AGENTS.md)** — Istruzioni per AI agents e convenzioni progettuali
 - **[MeetWiki/README.md](MeetWiki/README.md)** — Struttura della wiki e setup Obsidian
 - **[.github/copilot-instructions.md](.github/copilot-instructions.md)** — Integrazione con Copilot
