@@ -142,6 +142,21 @@ Leggere `SKILL.md` della skill prima di eseguirla.
 - NON rimuovere o duplicare le ancore `^h{hash10}` nelle board Kanban: rompi il sync bidirezionale.
 - NON eseguire `meetwiki_kanban.py --sync` con le board aperte e non salvate in Obsidian.
 - NON usare MAI GitKraken/GitLens MCP tools. Usare sempre `git` direttamente nel terminale.
+- NON tenere in piedi due workflow CI che fanno la stessa cosa: `.github/workflows/ci.yml` esegue gia' `ruff` + `pytest`. Se serve un workflow dedicato, sostituirlo, non affiancarlo.
+
+## Commit message
+
+Standard: [Conventional Commits](https://www.conventionalcommits.org/) in **inglese, imperativo presente**.
+
+- ✅ `ci: remove redundant lint.yml workflow`
+- ✅ `feat(update): add --dry-run flag`
+- ❌ `ci: rimuovi workflow lint.yml ridondante` (imperativo IT suona come ordine al lettore)
+- ❌ `docs: aggiornata documentazione` (participio passato non standard)
+
+Prefissi consentiti: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`, `style`.
+Scope opzionale tra parentesi: `feat(ingest): ...`, `fix(downloader): ...`.
+
+Per cambiamenti ai message gia' pushati: usare `git filter-branch` o `git rebase -i` SOLO con conferma esplicita dell'utente (riscrive history → force-push → richiede ri-clone per chi ha altri checkout).
 
 ## Obsidian + Kanban
 
