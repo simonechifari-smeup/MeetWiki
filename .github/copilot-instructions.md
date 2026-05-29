@@ -18,6 +18,7 @@ Quando l'utente lavora con la wiki dei meet, usa le skill in `.github/skills/`:
 - **`meetwiki-kanban`** → board Obsidian Kanban (`MY-KANBAN.md` + per-owner) con sync bidirezionale
 - **`meetwiki-search`** → grep esatto sulle note (NON modifica)
 - **`meetwiki-ask`** → ricerca BM25 + retrieval di passaggi per Q&A in linguaggio naturale
+- **`project-review`** → esegue code review sistematica del progetto (correttezza, sicurezza, architettura, doc, test)
 
 Leggi sempre il file `SKILL.md` della skill prima di operare.
 

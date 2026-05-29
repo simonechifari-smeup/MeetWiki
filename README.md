@@ -35,6 +35,7 @@ run.bat
 | Variabile | Descrizione | Obbligatoria |
 |-----------|-------------|:------------:|
 | `OUTPUT_DIR` | Percorso dove salvare le note scaricate | ✅ |
+| `GMAIL_SEARCH` | Query di ricerca Gmail (default: `label:note-di-gemini`) | No |
 | `MEETWIKI_OWNER` | Nome owner per la board Kanban personale | No |
 | `GITHUB_MODELS_TOKEN` | Token GitHub per Obsidian Copilot | No |
 

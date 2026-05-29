@@ -46,10 +46,11 @@ CHROME_EXE = os.getenv(
 )
 
 PROCESSED_FILE = Path(__file__).resolve().parent.parent / ".cache" / "processed_emails.json"
+SCANNED_FILE = Path(__file__).resolve().parent.parent / ".cache" / "scanned_emails.json"
 PROCESSED_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-# Gmail usa trattini per gli spazi nei nomi etichetta nella query di ricerca
-GMAIL_SEARCH = 'label:note-di-gemini subject:Note:'
+# Query di ricerca Gmail (configurabile via .env)
+GMAIL_SEARCH = os.getenv("GMAIL_SEARCH", "label:note-di-gemini")
 
 DOCS_URL_PATTERN = re.compile(
     r'https://docs\.google\.com/document/d/([a-zA-Z0-9_-]+)'
@@ -79,13 +80,31 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 def load_processed() -> set:
     if PROCESSED_FILE.exists():
-        return set(json.loads(PROCESSED_FILE.read_text(encoding="utf-8")))
+        try:
+            return set(json.loads(PROCESSED_FILE.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, ValueError):
+            return set()
     return set()
 
 
 def save_processed(processed: set) -> None:
     PROCESSED_FILE.write_text(
         json.dumps(sorted(processed), indent=2), encoding="utf-8"
+    )
+
+
+def load_scanned() -> set:
+    if SCANNED_FILE.exists():
+        try:
+            return set(json.loads(SCANNED_FILE.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, ValueError):
+            return set()
+    return set()
+
+
+def save_scanned(scanned: set) -> None:
+    SCANNED_FILE.write_text(
+        json.dumps(sorted(scanned), indent=2), encoding="utf-8"
     )
 
 
@@ -313,19 +332,20 @@ def get_email_items(page, processed: set) -> list:
 
     results = []
     n = len(email_data)
+    scanned = load_scanned()
     for i, meta in enumerate(email_data):
-        thread_id = meta.get("thread_id") or ""
         subject = meta.get("subject", f"email-{i}")
         date_str = meta.get("date", "")
+        thread_id = meta.get("thread_id", "")
 
-        # Usa un hash stabile di subject+date (gli ID DOM di Gmail cambiano a ogni sessione)
-        if subject and date_str:
-            email_id = hashlib.sha256(f"{subject}|{date_str}".encode()).hexdigest()[:12]
+        # Usa thread_id stabile (FM...) come chiave, fallback su hash(subject|date)
+        if thread_id.startswith("FM"):
+            scan_key = thread_id
         else:
-            email_id = thread_id or f"row-{i}"
+            scan_key = hashlib.sha256(f"{subject}|{date_str}".encode()).hexdigest()[:16]
 
-        if email_id in processed:
-            log.debug("Email %d/%d gia processata (pre-check), salto.", i + 1, n)
+        if scan_key in scanned:
+            log.debug("Email %d/%d gia scansionata, salto.", i + 1, n)
             continue
 
         log.info("Apro email %d/%d: %s", i + 1, n, subject[:80])
@@ -340,19 +360,6 @@ def get_email_items(page, processed: set) -> list:
             page.wait_for_selector(".a3s, .ii.gt", timeout=15_000)
             page.wait_for_timeout(400)
 
-            # Cattura l'ID thread stabile dall'URL (es. #search/.../FMfcgzQXJ...)
-            current_url = page.url
-            url_thread_match = re.search(r'[/#](FM[a-zA-Z0-9]+)', current_url)
-            if url_thread_match:
-                email_id = url_thread_match.group(1)
-                if email_id in processed:
-                    log.info("  -> Gia processata (URL id: %s), salto.", email_id)
-                    # Torna alla lista
-                    page.go_back(wait_until="domcontentloaded", timeout=15_000)
-                    page.wait_for_selector("div[role='main'] tr.zA:visible", timeout=15_000)
-                    page.wait_for_timeout(500)
-                    continue
-
             hrefs = page.locator(".a3s a[href], .ii.gt a[href]").evaluate_all(
                 "els => els.map(e => e.href)"
             )
@@ -364,20 +371,25 @@ def get_email_items(page, processed: set) -> list:
 
             doc_ids = extract_doc_ids_from_hrefs(hrefs)
 
-            if doc_ids:
+            # Filtra doc_id gia scaricati
+            new_doc_ids = [d for d in doc_ids if d not in processed]
+            if doc_ids and not new_doc_ids:
+                log.info("  -> Tutti i doc_id gia scaricati, salto.")
+            elif new_doc_ids:
                 results.append({
-                    "email_id": email_id,
                     "date": _parse_date(date_str) if date_str else datetime.now().strftime("%Y-%m-%d"),
-                    "doc_ids": doc_ids,
+                    "doc_ids": new_doc_ids,
                 })
-                log.info("  -> %d link Docs: %s", len(doc_ids), doc_ids)
+                log.info("  -> %d nuovi doc: %s", len(new_doc_ids), new_doc_ids)
             else:
                 log.info("  -> Nessun link Docs.")
-                processed.add(email_id)
+
+            # Segna email come scansionata
+            scanned.add(scan_key)
+            save_scanned(scanned)
 
         except Exception as exc:
             log.error("Errore email %d (%s): %s", i + 1, subject[:40], exc, exc_info=True)
-            processed.add(email_id)
 
         # Torna alla lista con go_back (Gmail SPA hash routing)
         try:
@@ -483,6 +495,8 @@ def run() -> None:
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-restore-session-state",
+        "--disable-session-crashed-bubble",
+        "--hide-crash-restore-bubble",
     ]
     log.info("Avvio Chrome con debug port %d...", CDP_PORT)
     chrome_proc = subprocess.Popen(chrome_args)
@@ -545,7 +559,6 @@ def run() -> None:
                     tmp_path = Path(tmpdir)
 
                     for item in emails:
-                        email_id = item["email_id"]
                         date_prefix = item["date"]
                         doc_ids = item["doc_ids"]
 
@@ -557,6 +570,8 @@ def run() -> None:
                             # Skip se file gia presente
                             if base_name in existing_files:
                                 log.info("  -> Gia scaricato: %s, salto.", base_name)
+                                processed.add(doc_id)
+                                save_processed(processed)
                                 continue
 
                             downloaded = download_doc_as_markdown(page, doc_id, tmp_path)
@@ -572,16 +587,24 @@ def run() -> None:
                             shutil.move(str(downloaded), str(dest))
                             log.info("  Salvato: %s", dest)
                             total_saved += 1
-
-                        processed.add(email_id)
-                        save_processed(processed)
+                            processed.add(doc_id)
+                            save_processed(processed)
 
         finally:
             page.close()
+            # Chiudi Chrome in modo pulito via CDP
+            try:
+                cdp = browser.new_browser_cdp_session()
+                cdp.send("Browser.close")
+            except Exception:
+                pass
             browser.close()
 
-    chrome_proc.terminate()
-    chrome_proc.wait(timeout=5)
+    try:
+        chrome_proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        chrome_proc.terminate()
+        chrome_proc.wait(timeout=5)
 
     log.info("=== Completato. File salvati: %d ===", total_saved)
 
