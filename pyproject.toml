@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meetwiki"
+version = "0.1.0"
+description = "Pipeline da Gmail/Gemini a una wiki LLM-ready di note di riunioni."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+dependencies = [
+    "playwright>=1.44,<2.0",
+    "python-dotenv>=1.0,<2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.5",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv", "chrome_profile", "note_riunioni", "MeetWiki"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # gestita da line-length (warning), molti messaggi lunghi
+    "B008",  # default mutable check non rilevante qui
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
