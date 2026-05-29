@@ -1,45 +1,114 @@
 @echo off
 :: ============================================================
-:: SETUP - Da eseguire UNA SOLA VOLTA
+:: SETUP - Da eseguire UNA SOLA VOLTA dopo il clone
+:: Crea venv, installa dipendenze, prepara vault Obsidian
 :: ============================================================
+setlocal enabledelayedexpansion
 set ROOT=%~dp0..\
-echo Installazione dipendenze Python...
-pip install -r "%ROOT%requirements.txt"
+cd /d "%ROOT%"
+
+echo.
+echo ============================================================
+echo  MeetWiki - Setup iniziale
+echo ============================================================
+echo.
+
+:: --------------------------------------------------
+:: 1. Creazione ambiente virtuale Python
+:: --------------------------------------------------
+echo [1/5] Creazione ambiente virtuale .venv...
+if not exist ".venv\Scripts\python.exe" (
+    python -m venv .venv
+    if errorlevel 1 (
+        echo ERRORE: Python non trovato. Assicurati che Python 3.12+ sia installato e nel PATH.
+        pause
+        exit /b 1
+    )
+    echo       .venv creato.
+) else (
+    echo       .venv gia' esistente, skip.
+)
+
+:: --------------------------------------------------
+:: 2. Installazione dipendenze
+:: --------------------------------------------------
+echo [2/5] Installazione dipendenze Python...
+.venv\Scripts\pip.exe install --upgrade pip -q
+.venv\Scripts\pip.exe install -r requirements.txt -q
 if errorlevel 1 (
-    echo ERRORE: pip non trovato. Assicurati che Python sia installato e nel PATH.
+    echo ERRORE: installazione dipendenze fallita.
     pause
     exit /b 1
 )
+echo       Dipendenze installate.
 
-echo Installazione browser Playwright...
-playwright install chromium
+:: --------------------------------------------------
+:: 3. Installazione browser Playwright
+:: --------------------------------------------------
+echo [3/5] Installazione browser Playwright (chromium)...
+.venv\Scripts\playwright.exe install chromium
 if errorlevel 1 (
     echo ERRORE durante installazione browser Playwright.
     pause
     exit /b 1
 )
+echo       Chromium installato.
 
-echo.
-echo Creazione file .env di configurazione...
-if not exist "%ROOT%.env" (
-    echo OUTPUT_DIR=%ROOT%note_riunioni> "%ROOT%.env"
-    echo File .env creato. Modifica OUTPUT_DIR se vuoi cambiare la cartella di destinazione.
+:: --------------------------------------------------
+:: 4. Creazione file .env
+:: --------------------------------------------------
+echo [4/5] Configurazione .env...
+if not exist ".env" (
+    copy ".env.example" ".env" >nul 2>&1
+    if not exist ".env" (
+        echo OUTPUT_DIR=%ROOT%note_riunioni> ".env"
+    )
+    echo       .env creato da .env.example. Modificalo con i tuoi valori.
 ) else (
-    echo File .env gia' esistente, non sovrascritto.
+    echo       .env gia' esistente, non sovrascritto.
+)
+
+:: --------------------------------------------------
+:: 5. Creazione cartelle necessarie
+:: --------------------------------------------------
+echo [5/5] Creazione struttura cartelle...
+if not exist "note_riunioni" mkdir "note_riunioni"
+if not exist "note_riunioni\archive" mkdir "note_riunioni\archive"
+if not exist ".cache" mkdir ".cache"
+if not exist "MeetWiki\notes" mkdir "MeetWiki\notes"
+if not exist "MeetWiki\.meta" mkdir "MeetWiki\.meta"
+echo       Cartelle create.
+
+:: --------------------------------------------------
+:: Verifica vault Obsidian
+:: --------------------------------------------------
+echo.
+echo Verifica vault Obsidian...
+if exist "MeetWiki\.obsidian\plugins\obsidian-kanban\main.js" (
+    echo       Plugin Kanban: OK
+) else (
+    echo       ATTENZIONE: Plugin Kanban mancante. Esegui scripts\setup_obsidian.bat
+)
+if exist "MeetWiki\.obsidian\plugins\dataview\main.js" (
+    echo       Plugin Dataview: OK
+) else (
+    echo       ATTENZIONE: Plugin Dataview mancante. Esegui scripts\setup_obsidian.bat
 )
 
 echo.
 echo ============================================================
-echo Setup completato!
+echo  Setup completato!
+echo ============================================================
 echo.
-echo PROSSIMO PASSO:
-echo   1. Chiudi Google Chrome completamente
-echo   2. Esegui run.bat (dalla root del progetto)
-echo   3. Si aprira' Chrome automaticamente con il tuo account gia' loggato
-echo   4. Lo script scarichera' le note Gemini in Markdown
+echo PROSSIMI PASSI:
+echo   1. Modifica .env con i tuoi valori (OUTPUT_DIR, MEETWIKI_OWNER)
+echo   2. Chiudi Google Chrome completamente
+echo   3. Esegui run.bat per scaricare le note da Gmail
+echo   4. Esegui: .venv\Scripts\python.exe scripts\meetwiki_update.py
 echo.
-echo Per esecuzione automatica ogni 10 minuti:
-echo   Esegui scripts\schedule_task.bat come Amministratore
+echo OPZIONALE:
+echo   - Apri MeetWiki/ in Obsidian per le board Kanban
+echo   - Esegui scripts\schedule_task.bat per schedulazione automatica
 echo ============================================================
 pause
 
