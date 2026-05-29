@@ -3,35 +3,35 @@
 ## Diagramma di flusso
 
 ```
-┌─────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
-│    Gmail     │────▶│ gemini_notes_downloader │────▶│  note_riunioni/     │
-│  (Gemini)    │     │  (Playwright + CDP)    │     │  (inbox .md files)  │
-└─────────────┘     └──────────────────────┘     └─────────┬───────────┘
-                                                            │
-                                                            ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│                      meetwiki_update.py                                 │
+┌─────────────┐     ┌─────────────────────────┐     ┌─────────────────────┐
+│    Gmail    │────>│ gemini_notes_downloader │────>│  note_riunioni/     │
+│  (Gemini)   │     │  (Playwright + CDP)     │     │  (inbox .md files)  │
+└─────────────┘     └─────────────────────────┘     └─────────┬───────────┘
+                                                              │
+                                                              ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       meetwiki_update.py                               │
 │                                                                        │
-│  ┌─────────┐  ┌─────────┐  ┌───────────┐  ┌─────────┐  ┌──────────┐ │
-│  │ ingest  │─▶│  index  │─▶│ summarize │─▶│ actions │─▶│  digest  │ │
-│  └─────────┘  └─────────┘  └───────────┘  └─────────┘  └──────────┘ │
-│       │                                         │              │       │
-│       ▼                                         ▼              ▼       │
-│  ┌──────────┐                             ┌──────────┐  ┌──────────┐ │
-│  │  kanban  │◀─── sync bidirezionale ────▶│ Obsidian │  │  search  │ │
-│  └──────────┘                             └──────────┘  └──────────┘ │
-└───────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌───────────────────────────────────────────────────────────────────────┐
+│   ┌─────────┐  ┌─────────┐  ┌───────────┐  ┌─────────┐  ┌──────────┐   │
+│   │ ingest  │─>│  index  │─>│ summarize │─>│ actions │─>│  digest  │   │
+│   └─────────┘  └─────────┘  └───────────┘  └─────────┘  └──────────┘   │
+│        │                                         │              │      │
+│        ▼                                         ▼              ▼      │
+│   ┌──────────┐                             ┌──────────┐  ┌──────────┐  │
+│   │  kanban  │<─── sync bidirezionale ────>│ Obsidian │  │  search  │  │
+│   └──────────┘                             └──────────┘  └──────────┘  │
+└────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌────────────────────────────────────────────────────────────────────────┐
 │  MeetWiki/                                                             │
-│  ├── notes/YYYY-MM/        ← note strutturate con frontmatter         │
-│  ├── topics/               ← pagine aggregate per argomento           │
-│  ├── people/               ← profili per partecipante                 │
+│  ├── notes/YYYY-MM/        ← note strutturate con frontmatter          │
+│  ├── topics/               ← pagine aggregate per argomento            │
+│  ├── people/               ← profili per partecipante                  │
 │  ├── actions/              ← tracker + kanban board                    │
-│  ├── digests/              ← sintesi settimanali/mensili              │
-│  └── .meta/                ← manifest, search index, status           │
-└───────────────────────────────────────────────────────────────────────┘
+│  ├── digests/              ← sintesi settimanali/mensili               │
+│  └── .meta/                ← manifest, search index, status            │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Componenti principali
@@ -75,12 +75,15 @@
 
 ## Scelte progettuali
 
-| Scelta | Motivazione |
-|--------|-------------|
-| Zero dipendenze YAML | Portabilità, nessun `pip install pyyaml` necessario |
-| Parser regex custom | Frontmatter semplice e controllato, nessuna complessità inutile |
-| Playwright + CDP | Chrome già loggato, nessuna configurazione OAuth |
-| SHA-256 per dedup | Riconoscimento preciso di contenuti duplicati/aggiornati |
-| Link relativi | Compatibilità Obsidian + GitHub rendering + portabilità |
-| Tag da whitelist | Consistenza e pulizia della tassonomia |
-| Partizionamento per mese | Scalabilità: evita cartelle con centinaia di file |
+| Scelta                   | Motivazione                                                     |
+| ------------------------ | --------------------------------------------------------------- |
+| Zero dipendenze YAML     | Portabilità, nessun `pip install pyyaml` necessario             |
+| Parser regex custom      | Frontmatter semplice e controllato, nessuna complessità inutile |
+| Playwright + CDP         | Chrome già loggato, nessuna configurazione OAuth                |
+| SHA-256 per dedup        | Riconoscimento preciso di contenuti duplicati/aggiornati        |
+| Link relativi            | Compatibilità Obsidian + GitHub rendering + portabilità         |
+| Tag da whitelist         | Consistenza e pulizia della tassonomia                          |
+| Partizionamento per mese | Scalabilità: evita cartelle con centinaia di file               |
+
+> Lo schema esatto del frontmatter (campi obbligatori + limiti del parser) e' in
+> [../MeetWiki/.meta/schema.md](../MeetWiki/.meta/schema.md).

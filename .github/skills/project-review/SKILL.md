@@ -142,7 +142,50 @@ specifica scope), limitarsi ai file rilevanti.
 ## Formato output della review
 
 Produrre il report come file Markdown in **`docs/REVIEW_REPORT.md`**.
-Se il file esiste già, sovrascriverlo con i risultati aggiornati.
+
+### Archiviazione del report precedente (obbligatoria)
+
+Se `docs/REVIEW_REPORT.md` esiste gia', PRIMA di scrivere il nuovo report:
+
+1. Creare la cartella `docs/reviews/` se non esiste.
+2. Leggere la data di generazione dal report esistente (riga `> Generato il: YYYY-MM-DD`).
+   Se assente, usare la data odierna come fallback.
+3. Spostare il vecchio file in `docs/reviews/REVIEW_REPORT-YYYY-MM-DD.md`.
+   Se la destinazione esiste gia' (gia' archiviato uno stesso giorno), aggiungere suffisso
+   incrementale `-2`, `-3`, ...
+4. Aggiornare `docs/reviews/INDEX.md` (creandolo se manca) con una riga in cima:
+   `- [YYYY-MM-DD](REVIEW_REPORT-YYYY-MM-DD.md) — N findings (🔴 a, 🟡 b, 🟢 c)`.
+5. Nel nuovo `docs/REVIEW_REPORT.md` aggiungere subito sotto la data una sezione
+   `## Storico` con link all'ultimo report archiviato e a `docs/reviews/INDEX.md`.
+
+PowerShell esempio:
+
+```powershell
+$prev = "docs/REVIEW_REPORT.md"
+if (Test-Path $prev) {
+    $date = (Select-String -Path $prev -Pattern '^> Generato il: (\d{4}-\d{2}-\d{2})' | Select-Object -First 1).Matches.Groups[1].Value
+    if (-not $date) { $date = Get-Date -Format 'yyyy-MM-dd' }
+    New-Item -ItemType Directory -Force docs/reviews | Out-Null
+    $dest = "docs/reviews/REVIEW_REPORT-$date.md"
+    $i = 2
+    while (Test-Path $dest) { $dest = "docs/reviews/REVIEW_REPORT-$date-$i.md"; $i++ }
+    Move-Item $prev $dest
+}
+```
+
+**Mai sovrascrivere senza archiviare**: i fix gia' marcati `done`/`wontfix` e le
+checkbox dell'utente sono valore storico (tracciabilita' del progetto).
+
+### Continuita' tra report
+
+Quando possibile, **rileggere il report archiviato piu' recente** prima di
+scrivere quello nuovo, per:
+- Mantenere stabili gli ID dei findings ancora aperti (es. F07 resta F07 se
+  il problema non e' stato risolto).
+- Marcare nel nuovo report con `(carry-over da YYYY-MM-DD)` i findings che
+  ricompaiono.
+- Evitare di riproporre findings gia' chiusi come `wontfix` con razionale
+  esplicito (se sono ancora validi, marcarli `wontfix` direttamente nel nuovo).
 
 ### Struttura del file
 
@@ -150,6 +193,11 @@ Se il file esiste già, sovrascriverlo con i risultati aggiornati.
 # Code Review Report — MeetWiki Pipeline
 
 > Generato il: YYYY-MM-DD
+
+## Storico
+
+- Report precedente: [YYYY-MM-DD](reviews/REVIEW_REPORT-YYYY-MM-DD.md)
+- Indice completo: [docs/reviews/INDEX.md](reviews/INDEX.md)
 
 ## Checklist Summary
 
