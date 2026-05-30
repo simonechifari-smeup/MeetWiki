@@ -19,6 +19,7 @@ Se l'utente chiede qualcosa non correlato alla wiki o al progetto, rispondi norm
 - **`meetwiki-kanban`** → board Obsidian Kanban (`MY-KANBAN.md` + per-owner) con sync bidirezionale
 - **`meetwiki-search`** → grep esatto sulle note (NON modifica)
 - **`meetwiki-ask`** → ricerca BM25 + retrieval di passaggi per Q&A in linguaggio naturale
+- **`meetwiki-manual`** → gestione note manuali in `MeetWiki/manual/` (prep, todo personali, progetti)
 - **`project-review`** → esegue code review sistematica del progetto (correttezza, sicurezza, architettura, doc, test)
 - **`docs-review`** → revisiona e integra inline la documentazione (README, AGENTS.md, docs/*.md, skill, CONTRIBUTING)
 

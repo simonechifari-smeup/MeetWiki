@@ -45,6 +45,7 @@ Preferire SEMPRE la skill orchestratrice quando possibile.
 | `meetwiki-kanban`    | Board Obsidian Kanban + sync bidirezionale dello stato                |
 | `meetwiki-search`    | Grep esatto sulle riunioni (NON modifica file)                        |
 | `meetwiki-ask`       | Q&A BM25 (retrieval RAG-style con citazioni)                          |
+| `meetwiki-manual`    | Note manuali in `MeetWiki/manual/` (prep meeting, todo, progetti)     |
 | `docs-review`        | Revisiona e integra inline tutta la documentazione del progetto       |
 
 Leggere `SKILL.md` della skill prima di eseguirla.
@@ -99,6 +100,7 @@ Leggere `SKILL.md` della skill prima di eseguirla.
 ### File system
 - `note_riunioni/` = **inbox**: solo file mai ingeriti. Tutto il resto va in `note_riunioni/archive/YYYY-MM/` (mese del meeting).
 - `MeetWiki/notes/YYYY-MM/{id}.md` = note canoniche, partizionate per mese del meeting.
+- `MeetWiki/manual/**/*.md` = **note manuali** (prep, todo, progetti). Schema rilassato, gestite dalla skill `meetwiki-manual`. NON sono toccate da `--reset` (sono dell'utente).
 - `MeetWiki/notes/_history/YYYY-MM/{id}-{hash8}.md` = backup automatici quando una nota cambia.
 - `MeetWiki/topics/`, `MeetWiki/people/`, `MeetWiki/digests/`, `MeetWiki/actions/by-owner/`, `MeetWiki/actions/kanban/`, `MeetWiki/ACTIONS.md`, `MeetWiki/MY-KANBAN.md` = generati, sicuri da cancellare e rigenerare.
 - `MeetWiki/.meta/manifest.json` = registro `{filename: {id, path, source, hash, ingested_at}}`. Distruzione = re-ingest from scratch.
