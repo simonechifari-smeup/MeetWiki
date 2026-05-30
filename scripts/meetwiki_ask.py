@@ -31,6 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WIKI = ROOT / "MeetWiki"
 NOTES = WIKI / "notes"
+MANUAL = WIKI / "manual"
 INDEX_FILE = WIKI / ".meta" / "search_index.json"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -38,6 +39,7 @@ from meetwiki_common import (  # noqa: E402, I001
     atomic_write_json,
     parse_frontmatter,
     safe_load_json,
+    validate_manual_note_frontmatter,
     validate_note_frontmatter,
 )
 
@@ -130,14 +132,14 @@ def chunk_text(text: str) -> list[str]:
 def build_index() -> dict:
     docs: list[dict] = []
     df: Counter = Counter()
-    for p in sorted(NOTES.rglob("*.md")):
-        if any(part.startswith("_") for part in p.relative_to(NOTES).parts):
-            continue
+
+    def _process(p: Path, *, is_manual: bool) -> None:
         fm, body = parse_frontmatter(p.read_text(encoding="utf-8"))
-        errs = validate_note_frontmatter(fm)
+        validator = validate_manual_note_frontmatter if is_manual else validate_note_frontmatter
+        errs = validator(fm)
         if errs:
             print(f"WARN: {p.name}: {'; '.join(errs)}", file=sys.stderr)
-            continue
+            return
         rel = p.relative_to(WIKI).as_posix()
         # chunk 0: titolo + tags + partecipanti (boost di matching)
         meta_chunk = f"{fm.get('title','')}\n" \
@@ -161,9 +163,21 @@ def build_index() -> dict:
                     "text": ck,
                     "tf": dict(tf),
                     "len": sum(tf.values()),
+                    "is_manual": is_manual,
                 })
                 for term in tf:
                     df[term] += 1
+
+    for p in sorted(NOTES.rglob("*.md")):
+        if any(part.startswith("_") for part in p.relative_to(NOTES).parts):
+            continue
+        _process(p, is_manual=False)
+
+    if MANUAL.exists():
+        for p in sorted(MANUAL.rglob("*.md")):
+            if any(part.startswith("_") or part.startswith(".") for part in p.relative_to(MANUAL).parts):
+                continue
+            _process(p, is_manual=True)
 
     n_docs = len(docs)
     avgdl = sum(d["len"] for d in docs) / n_docs if n_docs else 0

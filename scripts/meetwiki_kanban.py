@@ -104,7 +104,9 @@ def render_card(item: dict, from_board: Path) -> str:
     check = "x" if item["status"] == "done" else " "
     # Tronca task lunghi a una riga (Obsidian Kanban gestisce wrap)
     task = item["task"].replace("\n", " ").strip()
-    return f"- [{check}] {task}  [↗]({rel}) ^h{item['hash']}"
+    # Badge [M] per azioni provenienti da note manuali (prep, todo personali)
+    prefix = "**\\[M\\]** " if item.get("is_manual") else ""
+    return f"- [{check}] {prefix}{task}  [↗]({rel}) ^h{item['hash']}"
 
 
 def render_board(title: str, items: list[dict], board_path: Path,

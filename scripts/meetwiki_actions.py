@@ -23,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WIKI = ROOT / "MeetWiki"
 NOTES = WIKI / "notes"
+MANUAL = WIKI / "manual"
 ACTIONS_DIR = WIKI / "actions"
 BY_OWNER_DIR = ACTIONS_DIR / "by-owner"
 STATUS_FILE = WIKI / ".meta" / "actions_status.json"
@@ -35,6 +36,7 @@ from meetwiki_common import (  # noqa: E402, I001
     parse_frontmatter,
     safe_load_json,
     slugify as _common_slugify,
+    validate_manual_note_frontmatter,
     validate_note_frontmatter,
 )
 
@@ -78,21 +80,21 @@ def load_status() -> dict:
 
 def collect_actions() -> list[dict]:
     """Ritorna lista di {hash, owner, task, date, note_id, note_title, note_path,
-    status, closed_at, status_note}."""
+    status, closed_at, status_note, is_manual}."""
     status = load_status()
     items: list[dict] = []
-    for p in sorted(NOTES.rglob("*.md")):
-        if any(part.startswith("_") for part in p.relative_to(NOTES).parts):
-            continue
+
+    def _process_file(p: Path, *, is_manual: bool) -> None:
         fm, body = parse_frontmatter(p.read_text(encoding="utf-8"))
-        errs = validate_note_frontmatter(fm)
+        validator = validate_manual_note_frontmatter if is_manual else validate_note_frontmatter
+        errs = validator(fm)
         if errs:
             print(f"WARN: {p.name}: {'; '.join(errs)}", file=sys.stderr)
-            continue
+            return
         section = extract_section(body, "Action Items")
         if not section:
-            continue
-        rel = p.relative_to(WIKI).as_posix()  # "notes/2026-05/xxx.md"
+            return
+        rel = p.relative_to(WIKI).as_posix()
         for raw_line in section.splitlines():
             line = raw_line.strip()
             if not line.startswith("- ["):
@@ -128,7 +130,22 @@ def collect_actions() -> list[dict]:
                 "status": st,
                 "closed_at": override.get("closed_at", ""),
                 "status_note": override.get("note", ""),
+                "is_manual": is_manual,
             })
+
+    # Note canoniche (da meeting reali)
+    for p in sorted(NOTES.rglob("*.md")):
+        if any(part.startswith("_") for part in p.relative_to(NOTES).parts):
+            continue
+        _process_file(p, is_manual=False)
+
+    # Note manuali (prep, todo personali, progetti)
+    if MANUAL.exists():
+        for p in sorted(MANUAL.rglob("*.md")):
+            if any(part.startswith("_") or part.startswith(".") for part in p.relative_to(MANUAL).parts):
+                continue
+            _process_file(p, is_manual=True)
+
     return items
 
 
