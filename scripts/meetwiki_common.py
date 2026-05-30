@@ -132,6 +132,29 @@ REQUIRED_NOTE_FIELDS: tuple[str, ...] = (
 
 _LIST_NOTE_FIELDS: tuple[str, ...] = ("participants", "tags", "related_docs")
 
+REQUIRED_MANUAL_FIELDS: tuple[str, ...] = ("id", "title", "date")
+
+
+def validate_manual_note_frontmatter(fm: dict) -> list[str]:
+    """Schema rilassato per note manuali in `MeetWiki/manual/`.
+
+    Solo `id`, `title`, `date` obbligatori; tutti gli altri opzionali.
+    """
+    errors: list[str] = []
+    for key in REQUIRED_MANUAL_FIELDS:
+        if not fm.get(key):
+            errors.append(f"campo mancante o vuoto: {key}")
+    date_raw = fm.get("date", "")
+    if date_raw:
+        try:
+            datetime.strptime(str(date_raw), "%Y-%m-%d")
+        except ValueError:
+            errors.append(f"date non valida ('{date_raw}'), atteso YYYY-MM-DD")
+    for key in _LIST_NOTE_FIELDS:
+        if key in fm and not isinstance(fm[key], list):
+            errors.append(f"{key} deve essere una lista YAML")
+    return errors
+
 
 def validate_note_frontmatter(fm: dict) -> list[str]:
     """Ritorna lista di errori sul frontmatter di una nota canonica (F29).
