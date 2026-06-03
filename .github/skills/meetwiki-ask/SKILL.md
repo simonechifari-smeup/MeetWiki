@@ -54,6 +54,25 @@ L'output è un set di chunk con:
 
 **Cita SEMPRE le note di provenienza nella risposta all'utente** (link relativi).
 
+### 5. (Opzionale) Salva la risposta in output/
+Se la risposta è densa (analisi, confronto, sintesi multi-nota) oppure l'utente lo chiede esplicitamente,
+salva il risultato in `output/YYYY-MM-DD-{slug}.md` dove `{slug}` è 3-5 parole chiave dalla query in kebab-case.
+
+Struttura del file:
+```markdown
+---
+date: YYYY-MM-DD
+query: "testo originale della query"
+sources: [lista note citate]
+---
+
+# Titolo della risposta
+
+[corpo della risposta sintetica]
+```
+
+Esempio: query *"confronto con Karpathy LLM Wiki"* → `output/2026-06-03-confronto-karpathy-llm-wiki.md`
+
 ## Cosa indicizza
 Solo sezioni canoniche generate da `meetwiki-ingest`:
 - `Metadati` (titolo + tags + partecipanti — boost per match diretto)

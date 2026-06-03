@@ -100,6 +100,7 @@ Leggere `SKILL.md` della skill prima di eseguirla.
 ### File system
 - `note_riunioni/` = **inbox**: solo file mai ingeriti. Tutto il resto va in `note_riunioni/archive/YYYY-MM/` (mese del meeting).
 - `MeetWiki/notes/YYYY-MM/{id}.md` = note canoniche, partizionate per mese del meeting.
+- `output/` = **sink per risposte e artifact generati dall'agente AI** (analisi, sintesi, confronti, risposte a query meetwiki-ask). NON indicizzata dalla pipeline. Sicura da svuotare. Vedi sezione "Workflow output" sotto.
 - `MeetWiki/manual/**/*.md` = **note manuali** (prep, todo, progetti). Schema rilassato, gestite dalla skill `meetwiki-manual`. NON sono toccate da `--reset` (sono dell'utente).
 - `MeetWiki/notes/_history/YYYY-MM/{id}-{hash8}.md` = backup automatici quando una nota cambia.
 - `MeetWiki/topics/`, `MeetWiki/people/`, `MeetWiki/digests/`, `MeetWiki/actions/by-owner/`, `MeetWiki/actions/kanban/`, `MeetWiki/ACTIONS.md`, `MeetWiki/MY-KANBAN.md` = generati, sicuri da cancellare e rigenerare.
@@ -132,6 +133,45 @@ Leggere `SKILL.md` della skill prima di eseguirla.
 | Nuova skill                             | Aggiungerla a README.md tabella skill + `copilot-instructions.md` + AGENTS.md |
 | Modifiche a docs/ o README.md           | Eseguire `docs-review` per verificare allineamento complessivo        |
 | Cambiamenti al formato manifest         | Documentare in `MeetWiki/.meta/schema.md` se serve           |
+
+## Workflow output
+
+`output/` e' il sink per risposte sintetiche generate dall'agente AI a partire dalla wiki.
+**Non e' indicizzata dalla pipeline** e non viene mai toccata dagli script.
+
+### Quando salvare in output/
+
+Quando l'utente fa una query tipo `meetwiki-ask` o chiede un'analisi/confronto basata sulle note,
+l'agente AI **deve salvare la risposta in `output/`** se l'utente lo richiede oppure se la risposta
+e' abbastanza densa da valere come artifact (piu' di una risposta breve in chat).
+
+### Formato file
+
+```
+output/YYYY-MM-DD-{slug}.md
+```
+
+- `YYYY-MM-DD` = data odierna
+- `{slug}` = 3-5 parole chiave dalla query, in kebab-case (es. `confronto-karpathy-llm-wiki`)
+
+### Struttura del file
+
+```markdown
+---
+date: YYYY-MM-DD
+query: "testo originale della query"
+sources: [lista note citate, opzionale]
+---
+
+# Titolo della risposta
+
+[corpo della risposta sintetica]
+```
+
+### Esempio
+
+L'utente chiede: *"confronta la nostra implementazione con Karpathy LLM Wiki"*
+→ L'agente risponde in chat E salva `output/2026-06-03-confronto-karpathy-llm-wiki.md`
 
 ## Cosa NON fare
 
